@@ -1,0 +1,18 @@
+stages:
+ - build
+
+.job:
+  image: centos:7
+  tags:
+    - docker
+
+build:
+  extends: .job
+  stage: build
+  script:
+   - yum install -y make
+   - make sdk
+   - source sdk/env.sh
+   - make .rocks
+   - make test
+
