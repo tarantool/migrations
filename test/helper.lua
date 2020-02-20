@@ -7,7 +7,6 @@ local t = require('luatest')
 local helper = {}
 
 helper.root = fio.cwd()
-print('ROOT : ' ..  helper.root)
 helper.datadir = fio.pathjoin(helper.root, 'tmp', 'db_test')
 
 package.setsearchroot(helper.root)
