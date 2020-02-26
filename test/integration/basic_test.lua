@@ -57,7 +57,10 @@ g.test_basic = function()
     end
     main:http_request('post', '/migrations/up', { json = {} })
     for _, server in pairs(g.cluster.servers) do
-        t.assert_not(server.net_box:eval('return box.space.first == nil'))
+        -- spaces may be created with a slight delay on replicas
+        g.cluster:retrying({ timeout = 1 }, function()
+            t.assert_not(server.net_box:eval('return box.space.first == nil'), server.alias)
+        end)
     end
 
     local config = main:download_config()
