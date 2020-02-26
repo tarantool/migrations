@@ -1,5 +1,9 @@
 stages:
  - build
+ - publish
+
+variables:
+  ROCK_NAME: migrations
 
 .job:
   image: centos:7
@@ -9,6 +13,10 @@ stages:
 build:
   extends: .job
   stage: build
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME"
+    paths:
+      - ./release/*all.rock
   script:
    - yum install -y make
    - make sdk
@@ -16,3 +24,31 @@ build:
    - make .rocks
    - make test
 
+###
+### Publish rocks
+###
+publish-scm-1:
+  stage: publish
+  tags:
+    - docker
+  image: centos:7
+  only:
+    - master
+  script:
+    - curl --fail -X PUT -F "rockspec=@${ROCK_NAME}-scm-1.rockspec"
+      https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org
+
+
+publish-release:
+  stage: publish
+  tags:
+    - docker
+  image: centos:7
+  only:
+    - tags
+  script:
+    - cd release/
+    - curl --fail -X PUT -F "rockspec=@${ROCK_NAME}-${CI_COMMIT_TAG}-1.rockspec"
+      https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org
+    - curl --fail -X PUT -F "rockspec=@${ROCK_NAME}-${CI_COMMIT_TAG}-1.all.rock"
+      https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org

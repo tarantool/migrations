@@ -8,7 +8,7 @@ local cartridge_helpers = require('cartridge.test-helpers')
 
 local shared = require('test.helper.integration').shared
 
-local datadir = fio.pathjoin(shared.datadir, 'no_ddl')
+local datadir = fio.pathjoin(shared.datadir, 'basic')
 
 g.cluster = cartridge_helpers.Cluster:new({
     server_command = shared.server_command,
