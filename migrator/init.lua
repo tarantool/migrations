@@ -16,6 +16,8 @@ local migrator_error = require('errors').new_class(module_name)
 
 local utils = require('migrator.utils')
 vars:new('loader', require('migrator.directory-loader').new())
+vars:new('use_cartridge_ddl', true)
+
 
 local function get_diff()
     local names = {}
@@ -43,10 +45,11 @@ local function init()
             log.info('Preparing to run migrations on %s', instance_uri)
             local f = fiber.new(function()
                 local conn = pool.connect(instance_uri)
-                local applied_migrations, err = conn:call('__cluster_rpc_call_local', { 'migrator', 'upgrade' })
+                -- migrations might take long time, so net.box timeout should be disabled
+                local applied_migrations, err = conn:call('__cluster_rpc_call_local', { 'migrator', 'upgrade' }, {timeout = 3600})
                 if err ~= nil then
                     log.warn('Cannot apply migrations on %s: %s', instance_uri, json.encode(err))
-                    error(tostring(err))
+                    error(json.encode(err))
                 end
                 log.verbose('Instance %s applied migrations: %s', instance_uri, json.encode(applied_migrations))
                 result[instance_uri] = applied_migrations
@@ -83,7 +86,7 @@ local function init()
 
         local patch = {
             migrations = config,
-            ['schema.yml'] = ddl.get_schema()
+            ['schema.yml'] = vars.use_cartridge_ddl and ddl.get_schema() or nil
         }
         log.verbose('All migrations applied successfully, changing cluster-wide configuration with a patch: %s', json.encode(patch))
 
@@ -115,6 +118,11 @@ local function set_loader(loader)
     vars.loader = loader
 end
 
+local function set_use_cartridge_ddl(use_cartridge_ddl)
+    checks('boolean')
+    vars.use_cartridge_ddl = use_cartridge_ddl
+end
+
 return {
     init = init,
 
@@ -122,5 +130,6 @@ return {
 
     upgrade = upgrade,
 
-    set_loader = set_loader
+    set_loader = set_loader,
+    set_use_cartridge_ddl = set_use_cartridge_ddl
 }
