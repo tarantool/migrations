@@ -4,7 +4,7 @@ version := scm-1
 
 BUNDLE_VERSION=1.10.5-14-gb44cfa1
 
-all: webui/build/bundle.lua
+all: doc
 	mkdir -p doc
 
 sdk: Makefile
