@@ -1,13 +1,18 @@
 -- This file is required automatically by luatest.
 -- Add common configuration here.
 
+local digest = require('digest')
 local fio = require('fio')
 local t = require('luatest')
 
 local helper = {}
 
 helper.root = fio.cwd()
-helper.datadir = fio.pathjoin(helper.root, 'tmp', 'db_test')
+local tmpdir = os.getenv('TMPDIR')
+    and fio.pathjoin(os.getenv('TMPDIR'),
+        'migrations.' .. digest.base64_encode(digest.urandom(9), {urlsafe = true}))
+    or fio.pathjoin(helper.root, 'tmp')
+helper.datadir = fio.pathjoin(tmpdir, 'db_test')
 
 package.setsearchroot(helper.root)
 
