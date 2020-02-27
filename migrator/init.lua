@@ -37,6 +37,12 @@ local function init()
     local httpd = cartridge.service_get('httpd')
     httpd:route({ path = '/migrations/up', method = 'POST' }, function(_)
         local target_names = get_diff()
+
+        if #target_names == 0 then
+            log.info('No migrations to apply!')
+            return { status = 200 }
+        end
+
         log.info('Migrations to be applied: %s', json.encode(target_names))
 
         local result = {}
