@@ -20,6 +20,6 @@ return {
             unique = false
         })
         utils.register_sharding_key('sharded', {'bucket_id'})
-        return true
+        return nil
     end
 }

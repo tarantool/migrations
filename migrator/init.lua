@@ -101,8 +101,8 @@ local function upgrade()
     local result = {}
     local names, migrations_map = get_diff()
     for _, name in ipairs(names) do
-        local ok, err = migrator_error:pcall(migrations_map[name].up)
-        if not ok then
+        local _, err = migrator_error:pcall(migrations_map[name].up)
+        if err ~= nil then
             log.error('Migration %s not applied: %s', name, err)
             error(err)
         end

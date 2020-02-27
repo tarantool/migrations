@@ -5,6 +5,5 @@ return {
             unique = false,
             if_not_exists = true,
         })
-        return true
     end
 }
