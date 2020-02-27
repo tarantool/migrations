@@ -4,6 +4,7 @@ stages:
 
 variables:
   ROCK_NAME: migrations
+  TMPDIR: /dev/shm
 
 .job:
   image: centos:7
