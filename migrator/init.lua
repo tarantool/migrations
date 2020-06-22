@@ -84,7 +84,7 @@ local function init()
             end
         end
 
-        local config = confapplier.get_deepcopy('migrator') or {}
+        local config = confapplier.get_deepcopy('migrations') or {}
         config.applied = config.applied or {}
         for _, name in ipairs(target_names) do
             table.insert(config.applied, name)
