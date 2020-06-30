@@ -55,13 +55,15 @@ g.test_basic = function()
     for _, server in pairs(g.cluster.servers) do
         t.assert(server.net_box:eval('return box.space.first == nil'))
     end
-    main:http_request('post', '/migrations/up', { json = {} })
+    local result = main:http_request('post', '/migrations/up', { json = {} })
     for _, server in pairs(g.cluster.servers) do
         -- spaces may be created with a slight delay on replicas
         g.cluster:retrying({ timeout = 1 }, function()
             t.assert_not(server.net_box:eval('return box.space.first == nil'), server.alias)
         end)
     end
+
+    t.assert_equals(result.json, { applied = { "01_first.lua", "02_second.lua", "03_sharded.lua" } })
 
     local config = main:download_config()
     t.assert_covers(config, {
@@ -122,4 +124,7 @@ g.test_basic = function()
             },
         },
     })
+
+    result = main:http_request('post', '/migrations/up', { json = {} })
+    t.assert_equals(result.json, { applied = {} })
 end
