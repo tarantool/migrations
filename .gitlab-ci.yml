@@ -17,13 +17,14 @@ build:
   artifacts:
     name: "$CI_COMMIT_REF_NAME"
     paths:
-      - ./release/*all.rock
+      - ./release
   script:
    - yum install -y make
    - make sdk
    - source sdk/env.sh
    - make .rocks
    - make test
+   - ./release.sh
 
 ###
 ### Publish rocks
