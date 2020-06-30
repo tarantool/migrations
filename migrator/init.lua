@@ -35,12 +35,14 @@ end
 
 local function init()
     local httpd = cartridge.service_get('httpd')
-    httpd:route({ path = '/migrations/up', method = 'POST' }, function(_)
+    httpd:route({ path = '/migrations/up', method = 'POST' }, function(req)
         local target_names = get_diff()
 
         if #target_names == 0 then
             log.info('No migrations to apply!')
-            return { status = 200 }
+            local resp = req:render({ json = { applied = {} }})
+            resp.status = 200
+            return resp
         end
 
         log.info('Migrations to be applied: %s', json.encode(target_names))
@@ -99,7 +101,10 @@ local function init()
         local _, err = cartridge.config_patch_clusterwide(patch)
         if err ~= nil then error(err) end
         log.info('Migrations applied successfully!')
-        return { status = 200 }
+
+        local resp = req:render({ json = { applied = target_names }})
+        resp.status = 200
+        return resp
     end)
 end
 

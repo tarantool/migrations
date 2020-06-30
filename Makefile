@@ -2,7 +2,7 @@ version := scm-1
 
 .PHONY: all doc test schema install
 
-BUNDLE_VERSION=1.10.5-14-gb44cfa1
+BUNDLE_VERSION=1.10.6-11-gf6301c6
 
 all: doc
 	mkdir -p doc
