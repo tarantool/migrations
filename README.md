@@ -34,39 +34,58 @@ Every migration (e. g. `0001_basic_schema_DATETIME.lua`) should expose a single 
 4) What will happen then:
     * coordinator node (the one you curled upon) will trigger migrations execution on all replicaset leaders;
     * each replicaset leader will apply all available migrations and reply to coordinator;
-    * ff all replies are sussessful, coordinator will apply changes to cluster-wide config - a list of applied migrations and (optionally) resulting ddl-schema.
+    * if all replies are sussessful, coordinator will apply changes to cluster-wide config - a list of applied migrations and (optionally) resulting ddl-schema.
 
 5) That's it!
 
 ## Advanced usage
 
 1) Change directory where migrations are located: embed the following to init.lua
-```lua
-local migrator = require('migrator')
-local my_directory_loader = require('migrator.directory-loader').new('test/integration/migrations') 
-migrator.set_loader(my_directory_loader)
-```
 
-2) ... or use your own loader - it should expose a single function `list(self)` which returns a similar-looking array:
-```lua
-local my_loader = {
-    list = function(_)
-        return {
-            {
-                name  = '01_first',
-                up = function() ... end
-            },
-        }
-    end
-}
-migrator.set_loader(my_loader)
-```
+    ```lua
+    local migrator = require('migrator')
+    local my_directory_loader = require('migrator.directory-loader').new('test/integration/migrations') 
+    migrator.set_loader(my_directory_loader)
+    ```
 
-3) Disable `cartridge.ddl` usage:
-```lua
-migrator.set_use_cartridge_ddl(false)
-```
-In this case, resulting schema will not be registered via `cartridge_set_schema`
+2) ... or use `migrator.config-loader` to load migrations from Tarantool Cartridge clusterwide config.
+
+    Configure `migrator` to use `config-loader`:
+
+    ```lua
+    local migrator = require('migrator')
+    local config_loader = require('migrator.config-loader').new()
+    migrator.set_loader(config_loader)
+    ```
+
+    Navigate to Cartridge webui "Code" to write your migrations.
+    Migrations must be stored in *.lua files under "migrations/source" key:
+
+    ![config-loader example](doc/assets/config-loader.png)
+
+3) ... or use your own loader - it should expose a single function `list(self)` which returns a similar-looking array:
+
+    ```lua
+    local my_loader = {
+        list = function(_)
+            return {
+                {
+                    name  = '01_first',
+                    up = function() ... end
+                },
+            }
+        end
+    }
+    migrator.set_loader(my_loader)
+    ```
+
+4) Disable `cartridge.ddl` usage:
+
+    ```lua
+    migrator.set_use_cartridge_ddl(false)
+    ```
+
+    In this case, resulting schema will not be registered via `cartridge_set_schema`
 
 ## Utils, helpers, tips and tricks
 * Specify a sharding key for `cartridge.ddl` (if you use it) using `utils.register_sharding_key`:

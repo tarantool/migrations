@@ -19,6 +19,7 @@ build = {
             ['migrator'] = 'migrator/init.lua',
             ['migrator.utils'] = 'migrator/utils.lua',
             ['migrator.directory-loader'] = 'migrator/directory-loader.lua',
+            ['migrator.config-loader'] = 'migrator/config-loader.lua',
         },
     },
     build_variables = {
