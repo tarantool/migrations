@@ -4,10 +4,9 @@ local fio = require('fio')
 
 local cartridge_helpers = require('cartridge.test-helpers')
 local shared = require('test.helper')
+local utils = require("test.helper.utils")
 
 local g = t.group('no_cartridge_ddl')
-
-local helper = { shared = shared }
 
 local datadir = fio.pathjoin(shared.datadir, 'no_ddl')
 
@@ -46,18 +45,50 @@ g.before_all(function()
 end)
 g.after_all(function() g.cluster:stop() end)
 
-g.test_no_cartridge_ddl = function()
-    local main = g.cluster.main_server
-    for _, server in pairs(g.cluster.servers) do
-        t.assert(server.net_box:eval('return box.space.first == nil'))
+local cases = {
+    with_config_loader = function()
+        for _, server in pairs(g.cluster.servers) do
+            server.net_box:eval([[
+                require('migrator').set_loader(
+                    require('migrator.config-loader').new()
+                )
+            ]])
+        end
+
+        local files = {"01_first.lua", "02_second.lua", "03_sharded.lua"}
+        for _, v in ipairs(files) do
+            local file = fio.open('test/integration/migrations/' .. v)
+            local content = file:read()
+            utils.set_sections(g, {{filename="migrations/source/"..v, content=content}})
+            file:close()
+        end
+    end,
+    with_directory_loader = function()
+        for _, server in pairs(g.cluster.servers) do
+            server.net_box:eval([[
+                require('migrator').set_loader(
+                    require('migrator.directory-loader').new('test/integration/migrations')
+                )
+            ]])
+        end
     end
-    main:http_request('post', '/migrations/up', { json = {} })
-    for _, server in pairs(g.cluster.servers) do
-        t.assert_not(server.net_box:eval('return box.space.first == nil'))
+}
+
+for k, configure_func in pairs(cases) do
+    g['test_no_cartridge_ddl_' .. k] = function()
+        configure_func()
+        utils.cleanup(g)
+
+        local main = g.cluster.main_server
+
+        for _, server in pairs(g.cluster.servers) do
+            t.assert(server.net_box:eval('return box.space.first == nil'))
+        end
+        main:http_request('post', '/migrations/up', { json = {} })
+        for _, server in pairs(g.cluster.servers) do
+            t.assert_not(server.net_box:eval('return box.space.first == nil'))
+        end
+        local config = main:download_config()
+        t.assert_not(config.schema)
     end
-    local config = main:download_config()
-    t.assert_not(config.schema)
 end
-
-
-return helper
