@@ -64,7 +64,7 @@ local function init()
                 return true
             end)
             f:set_joinable(true)
-            f:name(instance_uri)
+            f:name(instance_uri, {truncate=true})
             table.insert(fibers, f)
         end
 
