@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.2.0]
 ### Fixed:
-- Fix bug in "second" migrations run, that would lead to each migratio napplying again and again
+- Fix bug in "second" migrations run, that would lead to each migration applying again and again
 
 ## [0.1.0]
 ### Added:
