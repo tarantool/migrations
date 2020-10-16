@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.1]
+### Fixed:
+- Fix "fiber name is too long" for long instance names
+
 ## [0.3.0]
 ### Added
 - config-loader to load migrations from Cartridge clusterwide config
