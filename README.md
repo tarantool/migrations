@@ -8,7 +8,17 @@ It stores the list of applied migrations in cluster-wide config and applies resu
 
 ## Usage
 
-1) Add `migrator` to the list of cartridge roles:
+1)  Add `migrations` dependency:
+    ```lua
+    -- <project-name>-scm-1.rockspec
+        dependencies = {
+            ...
+            'migrations == <the-latest-tag>-1',
+            ...
+        }
+    ```
+
+2) Add `migrator` to the list of cartridge roles:
     ```lua
     ....
     cartridge.cfg({
@@ -19,7 +29,7 @@ It stores the list of applied migrations in cluster-wide config and applies resu
     })
     ```
 
-2) Put migrations code to `./migrations` folder in your app. By default, migrator loads all files from it using lexicographical order.
+3) Put migrations code to `./migrations` folder in your app. By default, migrator loads all files from it using lexicographical order.
 Every migration (e. g. `0001_basic_schema_DATETIME.lua`) should expose a single parameter-less function `up`:
     ```lua
     return {
@@ -29,14 +39,14 @@ Every migration (e. g. `0001_basic_schema_DATETIME.lua`) should expose a single 
     }
     ```
 
-3) Call `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/up` once you are ready to migrate
+4) Call `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/up` once you are ready to migrate
 
-4) What will happen then:
+5) What will happen then:
     * coordinator node (the one you curled upon) will trigger migrations execution on all replicaset leaders;
     * each replicaset leader will apply all available migrations and reply to coordinator;
     * if all replies are sussessful, coordinator will apply changes to cluster-wide config - a list of applied migrations and (optionally) resulting ddl-schema.
 
-5) That's it!
+6) That's it!
 
 ## Advanced usage
 
