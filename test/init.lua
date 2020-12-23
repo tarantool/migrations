@@ -14,6 +14,8 @@ local ok, err = cartridge.cfg({
         'migrator',
     },
     cluster_cookie = 'migrations-test-cluster-cookie',
+}, {
+    log_level = 6
 })
 require('migrator').set_loader(require('migrator.directory-loader').new('test/integration/migrations'))
 
