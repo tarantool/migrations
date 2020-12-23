@@ -43,13 +43,8 @@ g.cluster = cartridge_helpers.Cluster:new({
     },
 })
 
-t.before_suite(function()
-    for _, server in ipairs(g.cluster.servers) do
-        server.env.TARANTOOL_LOG_LEVEL = 6
-    end
-    g.cluster:start()
-end)
-t.after_suite(function() g.cluster:stop() end)
+g.before_all(function() g.cluster:start() end)
+g.after_all(function() g.cluster:stop() end)
 
 local cases = {
     with_config_loader = function()
@@ -61,11 +56,11 @@ local cases = {
             ]])
         end
 
-        local files = {"01_first.lua", "02_second.lua", "03_sharded.lua"}
+        local files = { "01_first.lua", "02_second.lua", "03_sharded.lua" }
         for _, v in ipairs(files) do
             local file = fio.open('test/integration/migrations/' .. v)
             local content = file:read()
-            utils.set_sections(g, {{filename="migrations/source/"..v, content=content}})
+            utils.set_sections(g, { { filename = "migrations/source/" .. v, content = content } })
             file:close()
         end
     end,
@@ -97,11 +92,12 @@ for k, configure_func in pairs(cases) do
             end)
         end
 
-        t.assert_equals(result.json, { applied = { "01_first.lua", "02_second.lua", "03_sharded.lua" } })
+        local expected_applied = { "01_first.lua", "02_second.lua", "03_sharded.lua" }
+        t.assert_equals(result.json, { applied = expected_applied })
 
         local config = main:download_config()
         t.assert_covers(config, {
-            migrations = { applied = { "01_first.lua", "02_second.lua", "03_sharded.lua" } }
+            migrations = { applied = expected_applied }
         })
         t.assert_covers(config, {
             schema = {

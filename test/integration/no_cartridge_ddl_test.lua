@@ -35,9 +35,6 @@ g.cluster = cartridge_helpers.Cluster:new({
 })
 
 g.before_all(function()
-    for _, server in ipairs(g.cluster.servers) do
-        server.env.TARANTOOL_LOG_LEVEL = 6
-    end
     g.cluster:start()
     for _, server in ipairs(g.cluster.servers) do
         server.net_box:eval("require('migrator').set_use_cartridge_ddl(false)")
