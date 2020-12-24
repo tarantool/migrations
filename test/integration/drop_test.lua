@@ -38,7 +38,7 @@ g.cluster = cartridge_helpers.Cluster:new({
 g.before_all(function() g.cluster:start() end)
 g.after_all(function() g.cluster:stop() end)
 
-g.test_drop_index = function()
+g.test_drop = function()
     for _, server in pairs(g.cluster.servers) do
         server.net_box:eval([[
                 require('migrator').set_loader(
@@ -69,5 +69,19 @@ g.test_drop_index = function()
     g.cluster.main_server:http_request('post', '/migrations/up', { json = {} })
     for _, server in pairs(g.cluster.servers) do
         t.assert(server.net_box:eval('return box.space.first.index.value == nil'))
+    end
+
+    utils.set_sections(g, { { filename = "migrations/source/05_drop_space.lua", content = [[
+        return {
+            up = function()
+                box.space.first:drop()
+            end
+        }
+    ]] } })
+
+    -- drop a space, check that new schema is applied successfully
+    g.cluster.main_server:http_request('post', '/migrations/up', { json = {} })
+    for _, server in pairs(g.cluster.servers) do
+        t.assert(server.net_box:eval('return box.space.first     == nil'))
     end
 end
