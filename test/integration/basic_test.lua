@@ -27,8 +27,8 @@ g.cluster = cartridge_helpers.Cluster:new({
             uuid = cartridge_helpers.uuid('b'),
             roles = { 'vshard-storage' },
             servers = {
-                { instance_uuid = cartridge_helpers.uuid('b', 1), },
-                { instance_uuid = cartridge_helpers.uuid('b', 2), },
+                { instance_uuid = cartridge_helpers.uuid('b', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                { instance_uuid = cartridge_helpers.uuid('b', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
             },
         },
         {
@@ -36,8 +36,8 @@ g.cluster = cartridge_helpers.Cluster:new({
             uuid = cartridge_helpers.uuid('c'),
             roles = { 'vshard-storage' },
             servers = {
-                { instance_uuid = cartridge_helpers.uuid('c', 1), },
-                { instance_uuid = cartridge_helpers.uuid('c', 2), },
+                { instance_uuid = cartridge_helpers.uuid('c', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                { instance_uuid = cartridge_helpers.uuid('c', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
             },
         },
     },
@@ -79,6 +79,12 @@ for k, configure_func in pairs(cases) do
     g['test_basic_' .. k] = function()
         configure_func()
         utils.cleanup(g)
+
+        -- gh-26 - check that httpd is disabled on some nodes
+        t.assert_equals(
+            g.cluster:server('storage-2-2'):http_request('get', '/', {raise = false}),
+            {status = 595, reason = "Couldn't connect to server"}
+        )
 
         local main = g.cluster.main_server
         for _, server in pairs(g.cluster.servers) do

@@ -35,6 +35,8 @@ end
 
 local function init()
     local httpd = cartridge.service_get('httpd')
+    if not httpd then return true end
+
     httpd:route({ path = '/migrations/up', method = 'POST' }, function(req)
         local target_names = get_diff()
 
