@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Fixed: 
-- Fix crash during init when instance http server disabled 
+- Fix crash during init when instance http server disabled
+### Added:
+- Lua API to trigger migrations from console
+
 ## [0.3.1]
 ### Fixed:
 - Fix "fiber name is too long" for long instance names
