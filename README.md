@@ -39,7 +39,7 @@ Every migration (e. g. `0001_basic_schema_DATETIME.lua`) should expose a single 
     }
     ```
 
-4) Call `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/up` once you are ready to migrate
+4) Call `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/up` once you are ready to migrate or connect to any instance of cluster and call `require('migrator').up()`.
 
 5) What will happen then:
     * coordinator node (the one you curled upon) will trigger migrations execution on all replicaset leaders;
