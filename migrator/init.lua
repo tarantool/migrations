@@ -33,6 +33,10 @@ local function get_diff()
     return names, migrations_map
 end
 
+--- Run migrations on all nodes in the cluster
+-- Throws an exception in case of any problems
+-- @function up
+-- @return table list of applied migrations names, e. g. { "01_first.lua", "02_second.lua", "03_sharded.lua" }
 local function up()
     local target_names = get_diff()
 
