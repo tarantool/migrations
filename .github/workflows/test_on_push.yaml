@@ -27,13 +27,4 @@ jobs:
         run: source sdk/env.sh && make .rocks
       - name: Run tests
         run: make test
-      - name: Build package
-        run: ./release.sh
-      - name: Push scm-1
-        if: github.ref == 'refs/heads/master'
-        run: make push-scm-1
-      - name: Push tagged release
-        shell: bash
-        if: startsWith(github.ref, 'refs/tags/')
-        run: make push-release
 
