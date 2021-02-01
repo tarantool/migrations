@@ -76,86 +76,17 @@ local cases = {
 }
 
 for k, configure_func in pairs(cases) do
-    g['test_basic_' .. k] = function()
+    g['test_run_from_console_' .. k] = function()
         configure_func()
         utils.cleanup(g)
 
-        local main = g.cluster.main_server
         for _, server in pairs(g.cluster.servers) do
-            t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
+            t.assert(server.net_box:eval('return box.space.first == nil'))
         end
-        local result = g.cluster.servers[1].net_box:eval('return require("migrator").up()')
+        local result = g.cluster.main_server.net_box:eval('return require("migrator").up()')
+        t.assert_equals(result, { "01_first.lua", "02_second.lua", "03_sharded.lua" })
         for _, server in pairs(g.cluster.servers) do
-            -- spaces may be created with a slight delay on replicas
-            g.cluster:retrying({ timeout = 1 }, function()
-                t.assert_not(server.net_box:eval('return box.space.first == nil'), server.alias)
-            end)
+            t.assert_not(server.net_box:eval('return box.space.first == nil'))
         end
-
-        local expected_applied = { "01_first.lua", "02_second.lua", "03_sharded.lua" }
-        t.assert_equals(result, expected_applied)
-
-        local config = main:download_config()
-        t.assert_covers(config, {
-            migrations = { applied = expected_applied }
-        })
-        t.assert_covers(config, {
-            schema = {
-                spaces = {
-                    first = {
-                        engine = "memtx",
-                        format = {
-                            { is_nullable = false, name = "key", type = "string" },
-                            { is_nullable = true, name = "value", type = "string" },
-                        },
-                        indexes = {
-                            {
-                                name = "primary",
-                                parts = { { is_nullable = false, path = "key", type = "string" } },
-                                type = "TREE",
-                                unique = true,
-                            },
-                            {
-                                name = "value",
-                                parts = { { is_nullable = true, path = "value", type = "string" } },
-                                type = "TREE",
-                                unique = false,
-                            },
-                        },
-                        is_local = false,
-                        temporary = false,
-                    },
-                    sharded = {
-                        engine = "memtx",
-                        format = {
-                            { is_nullable = false, name = "key", type = "string" },
-                            { is_nullable = false, name = "bucket_id", type = "unsigned" },
-                            { is_nullable = true, name = "value", type = "any" },
-                        },
-                        indexes = {
-                            {
-                                name = "primary",
-                                parts = { { is_nullable = false, path = "key", type = "string" } },
-                                type = "TREE",
-                                unique = true,
-                            },
-                            {
-                                name = "bucket_id",
-                                parts = { { is_nullable = false, path = "bucket_id", type = "unsigned" } },
-                                type = "TREE",
-                                unique = false,
-                            },
-                        },
-                        is_local = false,
-                        sharding_key = { "bucket_id" },
-                        temporary = false,
-                    },
-
-                },
-            },
-        })
-
-        result = g.cluster.servers[1].net_box:eval('return require("migrator").up()')
-        t.assert_equals(result, {})
     end
 end
