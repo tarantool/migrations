@@ -30,11 +30,30 @@ It stores the list of applied migrations in cluster-wide config and applies resu
     ```
 
 3) Put migrations code to `./migrations` folder in your app. By default, migrator loads all files from it using lexicographical order.
-Every migration (e. g. `0001_basic_schema_DATETIME.lua`) should expose a single parameter-less function `up`:
+Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expose a single parameter-less function `up`:
     ```lua
     return {
         up = function()
-            box.schema.create_space('test')    
+        local utils = require('migrator.utils')
+        local f = box.schema.create_space('my_sharded_space', {
+            format = {
+                { name = 'key', type = 'string' },
+                { name = 'bucket_id', type = 'unsigned' },
+                { name = 'value', type = 'any', is_nullable = true }
+            },
+            if_not_exists = true,
+        })
+        f:create_index('primary', {
+            parts = { 'key' },
+            if_not_exists = true,
+        })
+        f:create_index('bucket_id', {
+            parts = { 'bucket_id' },
+            if_not_exists = true,
+            unique = false
+        })
+        utils.register_sharding_key('my_sharded_space', {'bucket_id'})
+        return true
         end
     }
     ```
@@ -102,7 +121,7 @@ Every migration (e. g. `0001_basic_schema_DATETIME.lua`) should expose a single 
 ```lua
     up = function()
         local utils = require('migrator.utils')
-        local f = box.schema.create_space('sharded', {
+        local f = box.schema.create_space('my_sharded_space', {
             format = {
                 { name = 'key', type = 'string' },
                 { name = 'bucket_id', type = 'unsigned' },
@@ -119,7 +138,7 @@ Every migration (e. g. `0001_basic_schema_DATETIME.lua`) should expose a single 
             if_not_exists = true,
             unique = false
         })
-        utils.register_sharding_key('sharded', {'bucket_id'})
+        utils.register_sharding_key('my_sharded_space', {'bucket_id'})
         return true
     end
 ```
