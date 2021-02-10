@@ -2,9 +2,6 @@
 
 require('strict').on()
 
-local root = os.getenv('LUATEST_LUACOV_ROOT')
-package.setsearchroot(root)
-
 local cartridge = require('cartridge')
 local ok, err = cartridge.cfg({
     workdir = 'tmp/db',
