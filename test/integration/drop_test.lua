@@ -1,5 +1,5 @@
 local t = require('luatest')
-local g = t.group('drop_index')
+local g = t.group('dangerous_ddl')
 local fiber = require('fiber') -- luacheck: ignore
 
 local fio = require('fio')
@@ -82,6 +82,25 @@ g.test_drop = function()
     -- drop a space, check that new schema is applied successfully
     g.cluster.main_server:http_request('post', '/migrations/up', { json = {} })
     for _, server in pairs(g.cluster.servers) do
-        t.assert(server.net_box:eval('return box.space.first     == nil'))
+        t.assert(server.net_box:eval('return box.space.first == nil'))
+    end
+
+    utils.set_sections(g, { { filename = "migrations/source/06_change_format.lua", content = [[
+        return {
+            up = function()
+                box.space.sharded:format({
+                    { name = 'key', type = 'string' },
+                    { name = 'bucket_id', type = 'unsigned' },
+                    { name = 'value', type = 'any', is_nullable = true },
+                    { name = 'external_id', type = 'string', is_nullable = true }
+                })
+            end
+        }
+    ]] } })
+
+    -- change space format, check that new schema is applied successfully
+    g.cluster.main_server:http_request('post', '/migrations/up', { json = {} })
+    for _, server in pairs(g.cluster.servers) do
+        t.assert_equals(server.net_box:eval('return box.space.sharded:format()')[4], { name = 'external_id', type = 'string', is_nullable = true })
     end
 end
