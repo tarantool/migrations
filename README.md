@@ -4,7 +4,7 @@
 
 Migrations module allows you to run cluster-wide migrations for your data.
 
-It stores the list of applied migrations in cluster-wide config and applies resulting schema to cartridge `ddl`. 
+It stores the list of applied migrations in cluster-wide config and applies resulting schema to cartridge `ddl`.
 
 ## Usage
 
@@ -23,7 +23,7 @@ It stores the list of applied migrations in cluster-wide config and applies resu
     ....
     cartridge.cfg({
       roles = {
-        'migrator', 
+        'migrator',
         ....
       }
     })
@@ -52,7 +52,7 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
             if_not_exists = true,
             unique = false
         })
-        utils.register_sharding_key('my_sharded_space', {'bucket_id'})
+        utils.register_sharding_key('my_sharded_space', {'key'})
         return true
         end
     }
@@ -73,7 +73,7 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
 
     ```lua
     local migrator = require('migrator')
-    local my_directory_loader = require('migrator.directory-loader').new('test/integration/migrations') 
+    local my_directory_loader = require('migrator.directory-loader').new('test/integration/migrations')
     migrator.set_loader(my_directory_loader)
     ```
 
