@@ -2,7 +2,7 @@ version := scm-1
 
 .PHONY: all doc test schema install
 
-BUNDLE_VERSION=1.10.6-37-g0613cfd
+BUNDLE_VERSION=1.10.9-0-g720ffdd23-r391
 COMMIT_TAG = $(shell git describe)
 
 all: doc
