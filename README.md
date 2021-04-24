@@ -138,7 +138,7 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
             if_not_exists = true,
             unique = false
         })
-        utils.register_sharding_key('my_sharded_space', {'bucket_id'})
+        utils.register_sharding_key('my_sharded_space', {'key'})
         return true
     end
 ```
