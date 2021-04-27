@@ -79,6 +79,8 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
 
 2) ... or use `migrator.config-loader` to load migrations from Tarantool Cartridge clusterwide config.
 
+IMPORTANT: The code below is setting up only the current instance for reading migrations from config. You should write this into the `init.lua` or type this manually at each instance in the cluster.
+
     Configure `migrator` to use `config-loader`:
 
     ```lua
