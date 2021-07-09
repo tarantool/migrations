@@ -153,7 +153,7 @@ for k, configure_func in pairs(cases) do
                             },
                         },
                         is_local = false,
-                        sharding_key = { "bucket_id" },
+                        sharding_key = { "key" },
                         temporary = false,
                     },
 
