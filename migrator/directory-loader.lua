@@ -8,7 +8,7 @@ Loader.__index = Loader
 local function assert_migration(migration)
     checks({
         name = 'string',
-        up = 'function'
+        up = 'function',
     })
     return migration
 end
@@ -36,7 +36,7 @@ local function new(dir_name)
     checks('?string')
     dir_name = dir_name or 'migrations'
     local loader = {
-        dir_name = dir_name
+        dir_name = dir_name,
     }
     setmetatable(loader, Loader)
     return loader

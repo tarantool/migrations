@@ -77,8 +77,8 @@ local cases = {
 
 for k, configure_func in pairs(cases) do
     g['test_basic_' .. k] = function()
-        configure_func()
         utils.cleanup(g)
+        configure_func()
 
         -- gh-26 - check that httpd is disabled on some nodes
         t.assert_equals(

@@ -73,8 +73,8 @@ local cases = {
 
 for k, configure_func in pairs(cases) do
     g['test_no_cartridge_ddl_' .. k] = function()
-        configure_func()
         utils.cleanup(g)
+        configure_func()
 
         local main = g.cluster.main_server
 

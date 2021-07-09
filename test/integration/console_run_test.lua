@@ -77,16 +77,18 @@ local cases = {
 
 for k, configure_func in pairs(cases) do
     g['test_run_from_console_' .. k] = function()
-        configure_func()
         utils.cleanup(g)
+        configure_func()
 
         for _, server in pairs(g.cluster.servers) do
             t.assert(server.net_box:eval('return box.space.first == nil'))
         end
         local result = g.cluster.main_server.net_box:eval('return require("migrator").up()')
         t.assert_equals(result, { "01_first.lua", "02_second.lua", "03_sharded.lua" })
-        for _, server in pairs(g.cluster.servers) do
-            t.assert_not(server.net_box:eval('return box.space.first == nil'))
-        end
+        g.cluster:retrying({ timeout = 1 }, function()
+            for _, server in pairs(g.cluster.servers) do
+                t.assert_not(server.net_box:eval('return box.space.first == nil'))
+            end
+        end)
     end
 end

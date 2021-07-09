@@ -74,15 +74,18 @@ local function up()
         if not ok then table.insert(errors, join_result) end
     end
     if #errors > 0 then
-        log.error('Errors happened during migrations, gods help you now: %s', json.encode(errors))
-        error(errors[1])
+        local err_msg = string.format('Errors happened during migrations: %s', json.encode(errors))
+        log.error(err_msg)
+        error(err_msg)
     end
 
     log.verbose('All fibers joined, results are: %s', json.encode(result))
 
     for instance_uri, applied in pairs(result) do
         if not utils.compare(applied, target_names) then
-            error('Not all migrations applied on %s. Actual list: %s', instance_uri, json.encode(applied))
+            local err_msg = string.format('Not all migrations applied on %s. Actual list: %s', instance_uri, json.encode(applied))
+            log.error(err_msg)
+            error(err_msg)
         end
     end
 
@@ -96,10 +99,14 @@ local function up()
         migrations = config,
         ['schema.yml'] = vars.use_cartridge_ddl and ddl.get_schema() or nil
     }
+    log.info('Migrations applied on all storages, changing clusterwide configuration...')
     log.verbose('All migrations applied successfully, changing cluster-wide configuration with a patch: %s', json.encode(patch))
 
     local _, err = cartridge.config_patch_clusterwide(patch)
-    if err ~= nil then error(err) end
+    if err ~= nil then
+        log.error(err)
+        error(err)
+    end
     log.info('Migrations applied successfully!')
 
     return target_names
