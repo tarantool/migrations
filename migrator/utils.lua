@@ -24,14 +24,14 @@ local function register_sharding_key(space_name, key)
             {name = 'space_name', type = 'string', is_nullable = false},
             {name = 'sharding_key', type = 'array', is_nullable = false}
         },
-        if_not_exists = true
+        if_not_exists = true,
     })
     sharding_space:create_index(
         'space_name', {
             type = 'TREE',
             unique = true,
             parts = {{'space_name', 'string', is_nullable = false}},
-            if_not_exists = true
+            if_not_exists = true,
         }
     )
     end

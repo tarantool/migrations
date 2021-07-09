@@ -1,5 +1,5 @@
 local t = require('luatest')
-local g = t.group('dangerous_ddl')
+local g = t.group('dangerous_operations')
 local fiber = require('fiber') -- luacheck: ignore
 
 local fio = require('fio')
@@ -37,6 +37,7 @@ g.cluster = cartridge_helpers.Cluster:new({
 
 g.before_all(function() g.cluster:start() end)
 g.after_all(function() g.cluster:stop() end)
+g.after_each(function() utils.cleanup(g) end)
 
 g.test_drop = function()
     for _, server in pairs(g.cluster.servers) do
@@ -104,3 +105,52 @@ g.test_drop = function()
         t.assert_equals(server.net_box:eval('return box.space.sharded:format()')[4], { name = 'external_id', type = 'string', is_nullable = true })
     end
 end
+
+g.test_error_in_migrations = function()
+    for _, server in pairs(g.cluster.servers) do
+        server.net_box:eval([[
+                require('migrator').set_loader(
+                    require('migrator.config-loader').new()
+                )
+            ]])
+    end
+
+    utils.set_sections(g, { { filename = "migrations/source/101_error.lua", content = [[
+        return {
+            up = function()
+                error('Oops')
+            end
+        }
+    ]] } })
+    local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {} ,raise = false})
+    t.assert_str_contains(result.body, 'Oops')
+    t.assert_str_contains(result.body, 'Errors happened during migrations')
+end
+
+g.test_inconsistent_migrations = function()
+    for _, server in pairs(g.cluster.servers) do
+        server.net_box:eval([[
+                require('migrator').set_loader({
+                    list = function() return {} end
+                })
+            ]])
+    end
+    g.cluster.main_server.net_box:eval([[
+                require('migrator').set_loader({
+                    list = function(_)
+                        return {
+                            {
+                                name = '102_local',
+                                up = function() return true end
+                            },
+                        }
+                    end
+                })
+            ]])
+
+
+    local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {} ,raise = false})
+    t.assert_str_contains(result.body, 'Not all migrations applied')
+end
+
+

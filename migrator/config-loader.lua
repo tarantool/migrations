@@ -12,7 +12,7 @@ end
 local function assert_migration(migration)
     checks({
         name = 'string',
-        up = 'function'
+        up = 'function',
     })
     return migration
 end
@@ -47,7 +47,7 @@ end
 
 local function new()
     local loader = {
-        config_section_name = 'migrations/source'
+        config_section_name = 'migrations/source',
     }
     setmetatable(loader, Loader)
     return loader
