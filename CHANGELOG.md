@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.1]
+### Fixed: 
+- Unclear error output in some cases
+
 ## [0.4.0]
 ### Fixed: 
 - Fix crash during init when instance http server disabled
