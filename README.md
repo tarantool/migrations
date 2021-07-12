@@ -142,7 +142,8 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
         return true
     end
 ```
-
+Warning! It's not correct to specify 'bucket_id' as a 'key' parameter for register_sharding_key().
+The 'bucket_id' field is a place where the output of sharding function is saved to.
 
 
 ## Limitations

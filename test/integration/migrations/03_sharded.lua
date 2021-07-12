@@ -19,7 +19,7 @@ return {
             if_not_exists = true,
             unique = false
         })
-        utils.register_sharding_key('sharded', {'bucket_id'})
+        utils.register_sharding_key('sharded', {'key'})
         return nil
     end
 }

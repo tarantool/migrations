@@ -1,3 +1,4 @@
+local log = require('log')
 
 local function value_in(val, arr)
     for i, elem in ipairs(arr) do
@@ -16,8 +17,21 @@ local function compare(a, b)
     return true
 end
 
+
 -- TODO: remove this ugly hack
+---
+--- Set fields that are used for sharding key calculation for a specified space.
+---
+--- @param space_name string name of sharded space
+--- @param key table array of field names that will be used as input of sharding function
+---
 local function register_sharding_key(space_name, key)
+
+    if value_in('bucket_id', key) then
+        log.error("Wrong sharding key: 'bucket_id' is used as input of sharding function for space '"
+            .. space_name .. "'")
+    end
+
     if box.space._ddl_sharding_key == nil then
             local sharding_space = box.schema.space.create('_ddl_sharding_key', {
         format = {
