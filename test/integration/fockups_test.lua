@@ -122,7 +122,7 @@ g.test_error_in_migrations = function()
             end
         }
     ]] } })
-    local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {} ,raise = false})
+    local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {}, raise = false })
     t.assert_str_contains(result.body, 'Oops')
     t.assert_str_contains(result.body, 'Errors happened during migrations')
 end
@@ -148,9 +148,22 @@ g.test_inconsistent_migrations = function()
                 })
             ]])
 
-
-    local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {} ,raise = false})
+    local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {}, raise = false })
     t.assert_str_contains(result.body, 'Not all migrations applied')
 end
 
+g.test_reload = function()
+    for _, server in pairs(g.cluster.servers) do
+        local e_get_routes_cnt = [[
+            local httpd = require('cartridge').service_get('httpd')
+            return table.maxn(httpd.routes)
+        ]]
+        local routes_count = server.net_box:eval(e_get_routes_cnt)
+        local ok, err = server.net_box:eval([[
+            return require("cartridge.roles").reload()
+        ]])
+       t.assert_equals({ ok, err }, { true, nil })
+       t.assert_equals(server.net_box:eval(e_get_routes_cnt), routes_count)
+    end
+end
 

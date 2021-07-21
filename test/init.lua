@@ -11,6 +11,7 @@ local ok, err = cartridge.cfg({
         'migrator',
     },
     cluster_cookie = 'migrations-test-cluster-cookie',
+    roles_reload_allowed = true
 }, {
     log_level = 6
 })

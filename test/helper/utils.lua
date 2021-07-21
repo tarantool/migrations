@@ -23,6 +23,7 @@ local function cleanup(g)
     for _, name in pairs(sections) do
         set_sections(g, { { filename = 'migrations/source/' .. name, content = box.NULL } })
     end
+    set_sections(g, { { filename = 'schema.yml', content = box.NULL } })
 
     g.cluster.main_server.net_box:eval([[require('cartridge').config_patch_clusterwide({migrations = {applied = {}}})]])
     local spaces_to_remove = { "first", "sharded" }

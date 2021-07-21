@@ -81,7 +81,7 @@ for k, configure_func in pairs(cases) do
         configure_func()
 
         for _, server in pairs(g.cluster.servers) do
-            t.assert(server.net_box:eval('return box.space.first == nil'))
+            t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
         end
         local result = g.cluster.main_server.net_box:eval('return require("migrator").up()')
         t.assert_equals(result, { "01_first.lua", "02_second.lua", "03_sharded.lua" })
