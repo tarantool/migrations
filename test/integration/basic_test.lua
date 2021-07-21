@@ -80,6 +80,10 @@ for k, configure_func in pairs(cases) do
         utils.cleanup(g)
         configure_func()
 
+        for _, server in pairs(g.cluster.servers) do
+            t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
+        end
+
         -- gh-26 - check that httpd is disabled on some nodes
         t.assert_equals(
             g.cluster:server('storage-2-2'):http_request('get', '/', {raise = false}),
@@ -87,9 +91,6 @@ for k, configure_func in pairs(cases) do
         )
 
         local main = g.cluster.main_server
-        for _, server in pairs(g.cluster.servers) do
-            t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
-        end
         local result = main:http_request('post', '/migrations/up', { json = {} })
         for _, server in pairs(g.cluster.servers) do
             -- spaces may be created with a slight delay on replicas
