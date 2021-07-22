@@ -69,6 +69,8 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
 
 ## Advanced usage
 
+IMPORTANT: code snippets below should be embedded to `init.lua`, so they would take effect on all nodes of the cluster.
+
 1) Change directory where migrations are located: embed the following to init.lua
 
     ```lua
