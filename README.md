@@ -18,8 +18,9 @@ It stores the list of applied migrations in cluster-wide config and applies resu
         }
     ```
 
-2) Add `migrator` to the list of cartridge roles:
+2) Add `migrator` to the list of cartridge roles in `init.lua`:
     ```lua
+    -- init.lua
     ....
     cartridge.cfg({
       roles = {
