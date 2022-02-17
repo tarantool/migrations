@@ -33,6 +33,22 @@ local function get_diff()
     return names, migrations_map
 end
 
+local function get_schema()
+    return ddl.get_schema()
+end
+
+-- since migrations might be triggered on a replica, we should fetch ddl schema from actual master
+-- see https://github.com/tarantool/migrations/issues/56 for details
+local function fetch_schema()
+    if vars.use_cartridge_ddl ~= true then return nil end
+    local schema, err = rpc.call('migrator', 'get_schema', nil, {prefer_local = true, leader_only = true})
+        if err ~= nil then
+        log.error(err)
+        error(err)
+    end
+    return schema
+end
+
 --- Run migrations on all nodes in the cluster
 -- Throws an exception in case of any problems
 -- @function up
@@ -97,7 +113,7 @@ local function up()
 
     local patch = {
         migrations = config,
-        ['schema.yml'] = vars.use_cartridge_ddl and ddl.get_schema() or nil
+        ['schema.yml'] = fetch_schema()
     }
     log.info('Migrations applied on all storages, changing clusterwide configuration...')
     log.verbose('All migrations applied successfully, changing cluster-wide configuration with a patch: %s', json.encode(patch))
@@ -158,5 +174,7 @@ return {
     up = up,
 
     set_loader = set_loader,
-    set_use_cartridge_ddl = set_use_cartridge_ddl
+    set_use_cartridge_ddl = set_use_cartridge_ddl,
+
+    get_schema = get_schema
 }
