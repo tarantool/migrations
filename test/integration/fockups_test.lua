@@ -30,6 +30,7 @@ g.cluster = cartridge_helpers.Cluster:new({
             roles = { 'vshard-storage' },
             servers = {
                 { instance_uuid = cartridge_helpers.uuid('b', 1), },
+                { instance_uuid = cartridge_helpers.uuid('b', 2), },
             },
         },
     },
@@ -167,3 +168,62 @@ g.test_reload = function()
     end
 end
 
+-- https://github.com/tarantool/migrations/issues/56
+g.test_up_on_replica = function()
+    for _, server in pairs(g.cluster.servers) do
+        server.net_box:eval([[
+                require('migrator').set_loader(
+                    require('migrator.config-loader').new()
+                )
+            ]])
+    end
+
+    -- create some space
+    g.cluster.main_server:http_request('post', '/migrations/up', { json = {} })
+    utils.set_sections(g, { { filename = "migrations/source/100_create_space.lua", content = [[
+        return {
+            up = function()
+                local f = box.schema.create_space('somespace', {
+                    format = {
+                        { name = 'key', type = 'string' },
+                        { name = 'value', type = 'string', is_nullable = true }
+                    },
+                    if_not_exists = true,
+                })
+                f:create_index('primary', {
+                    parts = { 'key' },
+                    if_not_exists = true,
+                })
+            end
+        }
+    ]] } })
+    g.cluster.main_server:http_request('post', '/migrations/up', { json = {} })
+
+    fiber.sleep(0.5)
+
+    -- inject schema replication delay
+    g.cluster:server('storage-1-2').net_box:eval([[
+        box.space._space:before_replace(function(old, new) os.execute('sleep 0.5'); return new end)
+    ]])
+
+    -- change space format to make ddl schema incompatible
+    utils.set_sections(g, { { filename = "migrations/source/101_alter_space.lua", content = [[
+        return {
+            up = function()
+                box.space.somespace:format({
+                        { name = 'key', type = 'string' },
+                        { name = 'value', type = 'string', is_nullable = true },
+                        { name = 'secondvalue', type = 'string', is_nullable = true }
+                    })
+            end
+        }
+    ]] } })
+    g.cluster:server('storage-1-2'):http_request('post', '/migrations/up', { json = {} })
+end
+
+g.after_each(function()
+    g.cluster:server('storage-1-2').net_box:eval([[
+        local f = box.space._space:before_replace()
+         box.space._space:before_replace(nil, f[1])
+    ]])
+end)
