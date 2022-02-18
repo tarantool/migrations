@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.2]
+### Fixed:
+- Fetch schema from a replicaset leader to apply on the clusterwide config even
+  when `migrations.up()` is called on a replica (gh-56). The local schema on
+  the replica may be not the most actual due to replication lag.
+- Issue a warning into log when `register_sharding_key()` is called with
+  `{'bucket_id'}` key (gh-49). It is likely a mistake: sharding key is a set of
+  fields, which are used to calculate `bucket_id`, not the `bucket_id` itself.
+
 ## [0.4.1]
 ### Fixed: 
 - Unclear error output in some cases
