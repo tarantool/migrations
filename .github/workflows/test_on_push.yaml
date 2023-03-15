@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   all:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: centos:7
     timeout-minutes: 10
@@ -17,7 +17,7 @@ jobs:
         run: |
           yum -y install epel-release https://repo.ius.io/ius-release-el7.rpm
           yum -y update
-          yum -y install wget git222 cmake make unzip
+          yum -y install wget git cmake make unzip gcc gcc-c++
       - name: Checkout sources
         uses: actions/checkout@v2
       - name: Install sdk
