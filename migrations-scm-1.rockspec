@@ -17,6 +17,7 @@ build = {
     install = {
         lua = {
             ['migrator'] = 'migrator/init.lua',
+            ['migrator.version'] = 'migrator/version.lua',
             ['migrator.utils'] = 'migrator/utils.lua',
             ['migrator.directory-loader'] = 'migrator/directory-loader.lua',
             ['migrator.config-loader'] = 'migrator/config-loader.lua',

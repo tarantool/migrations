@@ -176,5 +176,7 @@ return {
     set_loader = set_loader,
     set_use_cartridge_ddl = set_use_cartridge_ddl,
 
-    get_schema = get_schema
+    get_schema = get_schema,
+
+    _VERSION = require('migrator.version'),
 }
