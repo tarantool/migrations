@@ -124,6 +124,10 @@ g.test_error_in_migrations = function()
         }
     ]] } })
     local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {}, raise = false })
+    t.assert_equals(result.status, 500)
+
+    t.xfail('See https://github.com/tarantool/migrations/issues/63')
+
     t.assert_str_contains(result.body, 'Oops')
     t.assert_str_contains(result.body, 'Errors happened during migrations')
 end
@@ -150,6 +154,10 @@ g.test_inconsistent_migrations = function()
             ]])
 
     local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {}, raise = false })
+    t.assert_equals(result.status, 500)
+
+    t.xfail('See https://github.com/tarantool/migrations/issues/63')
+
     t.assert_str_contains(result.body, 'Not all migrations applied')
 end
 
