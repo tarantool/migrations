@@ -31,11 +31,11 @@ jobs:
     needs: version-check
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: tarantool/setup-tarantool@v1
+      - uses: tarantool/setup-tarantool@v2
         with:
-          tarantool-version: '2.5'
+          tarantool-version: '2.10'
       - run: echo $PWD/.rocks/bin >> $GITHUB_PATH
 
       # Make a release
