@@ -121,33 +121,32 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
 
 ## Utils, helpers, tips and tricks
 * Specify a sharding key for `cartridge.ddl` (if you use it) using `utils.register_sharding_key`:
-```lua
-    up = function()
-        local utils = require('migrator.utils')
-        local f = box.schema.create_space('my_sharded_space', {
-            format = {
-                { name = 'key', type = 'string' },
-                { name = 'bucket_id', type = 'unsigned' },
-                { name = 'value', type = 'any', is_nullable = true }
-            },
-            if_not_exists = true,
-        })
-        f:create_index('primary', {
-            parts = { 'key' },
-            if_not_exists = true,
-        })
-        f:create_index('bucket_id', {
-            parts = { 'bucket_id' },
-            if_not_exists = true,
-            unique = false
-        })
-        utils.register_sharding_key('my_sharded_space', {'key'})
-        return true
-    end
-```
-Warning! It's not correct to specify 'bucket_id' as a 'key' parameter for register_sharding_key().
-The 'bucket_id' field is a place where the output of sharding function is saved to.
-
+  ```lua
+      up = function()
+          local utils = require('migrator.utils')
+          local f = box.schema.create_space('my_sharded_space', {
+              format = {
+                  { name = 'key', type = 'string' },
+                  { name = 'bucket_id', type = 'unsigned' },
+                  { name = 'value', type = 'any', is_nullable = true }
+              },
+              if_not_exists = true,
+          })
+          f:create_index('primary', {
+              parts = { 'key' },
+              if_not_exists = true,
+          })
+          f:create_index('bucket_id', {
+              parts = { 'bucket_id' },
+              if_not_exists = true,
+              unique = false
+          })
+          utils.register_sharding_key('my_sharded_space', {'key'})
+          return true
+      end
+  ```
+  Warning! It's not correct to specify 'bucket_id' as a 'key' parameter for register_sharding_key().
+  The 'bucket_id' field is a place where the output of sharding function is saved to.
 
 ## Limitations
 - all migrations will be run on all cluster nodes (no partial migrations);
