@@ -166,3 +166,34 @@ for k, configure_func in pairs(cases) do
         t.assert_equals(result.json, { applied = {} })
     end
 end
+
+g.test_gh_66_configurable_timeout = function(cg)
+    utils.cleanup(cg)
+
+    local main = g.cluster.main_server
+
+    main:eval([[
+        require('cartridge').config_patch_clusterwide({migrations = {applied = {}, options = {storage_timeout = 0.1}}})
+    ]])
+
+    for _, server in pairs(cg.cluster.servers) do
+        server.net_box:eval([[
+            require('migrator').set_loader(
+                require('migrator.directory-loader').new('test/integration/migrations-gh-66')
+            )
+        ]])
+    end
+
+    local status, resp = g.cluster.main_server:eval("return pcall(function() require('migrator').up() end)")
+    t.assert_equals(status, false)
+    t.assert_str_contains(tostring(resp), 'Errors happened during migrations')
+
+    -- Depending on Tarantool version, error message may differ.
+    local status_v1, err_v1 = pcall(function()
+        t.assert_str_contains(tostring(resp), 'timed out')
+    end)
+    local status_v2, err_v2 = pcall(function()
+        t.assert_str_contains(tostring(resp), 'Timeout exceeded')
+    end)
+    t.assert(status_v1 or status_v2, ("Got errors: %s, %s"):format(err_v1 and err_v1.message, err_v2 and err_v2.message))
+end

@@ -49,6 +49,17 @@ local function fetch_schema()
     return schema
 end
 
+local DEFAULT_STORAGE_TIMEOUT = 3600
+
+local function get_storage_timeout()
+    local config = confapplier.get_readonly('migrations') or {}
+    local options = config['options'] or {}
+    if options.storage_timeout ~= nil then
+        return options.storage_timeout
+    end
+    return DEFAULT_STORAGE_TIMEOUT
+end
+
 --- Run migrations on all nodes in the cluster
 -- Throws an exception in case of any problems
 -- @function up
@@ -69,8 +80,10 @@ local function up()
         log.info('Preparing to run migrations on %s', instance_uri)
         local f = fiber.new(function()
             local conn = pool.connect(instance_uri)
-            -- migrations might take long time, so net.box timeout should be disabled
-            local applied_migrations, err = conn:call('__cluster_rpc_call_local', { 'migrator', 'upgrade' }, {timeout = 3600})
+            local applied_migrations, err = conn:call(
+                '__cluster_rpc_call_local',
+                { 'migrator', 'upgrade' },
+                {timeout = get_storage_timeout()})
             if err ~= nil then
                 log.warn('Cannot apply migrations on %s: %s', instance_uri, json.encode(err))
                 error(json.encode(err))
@@ -165,8 +178,26 @@ local function set_use_cartridge_ddl(use_cartridge_ddl)
     vars.use_cartridge_ddl = use_cartridge_ddl
 end
 
+local function validate_config(conf_new)
+    local migrations_conf = conf_new['migrations'] or {}
+    local options = migrations_conf['options'] or {}
+
+    if options.storage_timeout ~= nil then
+        assert(
+            type(options.storage_timeout) == 'number',
+            ("'options.storage_timeout' must be a number, %s provided"):format(type(options.storage_timeout)))
+        assert(
+            options.storage_timeout >= 0,
+            "'options.storage_timeout' must be a non-negative number")
+    end
+
+    return true
+end
+
 return {
     init = init,
+
+    validate_config = validate_config,
 
     permanent = true,
 
