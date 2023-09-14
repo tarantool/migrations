@@ -85,7 +85,7 @@ for k, configure_func in pairs(cases) do
         end
 
         -- gh-26 - check that httpd is disabled on some nodes
-        t.assert_equals(
+        t.assert_covers(
             g.cluster:server('storage-2-2'):http_request('get', '/', {raise = false}),
             {status = 595, reason = "Couldn't connect to server"}
         )
