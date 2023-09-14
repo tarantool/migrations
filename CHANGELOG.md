@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed:
 - Running tests with Tarantool 2.11+
+- Running tests with tarantool/http 1.2.0+ (gh-63)
 
 ## [0.5.0]
 ### Added:
