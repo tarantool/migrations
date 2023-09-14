@@ -148,6 +148,17 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
   Warning! It's not correct to specify 'bucket_id' as a 'key' parameter for register_sharding_key().
   The 'bucket_id' field is a place where the output of sharding function is saved to.
 
+* Before 0.6.0, each storage migration run time was limited to 3600 seconds (#66).
+  If your migrations run longer than this limit, it will result in timeout error.
+
+  Starting with 0.6.0, you may configure this value with clusterwide config to
+  allow longer migrations. Default is 3600 seconds.
+  ```yaml
+  migrations:
+    options:
+      storage_timeout: 43200 # in seconds
+  ```
+
 ## Limitations
 - all migrations will be run on all cluster nodes (no partial migrations);
 - no pre-validation for migrations code (yet), so you should test them beforehands;
