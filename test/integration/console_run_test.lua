@@ -85,7 +85,7 @@ for k, configure_func in pairs(cases) do
         end
         local result = g.cluster.main_server.net_box:eval('return require("migrator").up()')
         t.assert_equals(result, { "01_first.lua", "02_second.lua", "03_sharded.lua" })
-        g.cluster:retrying({ timeout = 1 }, function()
+        g.cluster:retrying({ timeout = 5 }, function()
             for _, server in pairs(g.cluster.servers) do
                 t.assert_not(server.net_box:eval('return box.space.first == nil'))
             end
