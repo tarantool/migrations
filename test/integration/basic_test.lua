@@ -94,7 +94,7 @@ for k, configure_func in pairs(cases) do
         local result = main:http_request('post', '/migrations/up', { json = {} })
         for _, server in pairs(g.cluster.servers) do
             -- spaces may be created with a slight delay on replicas
-            g.cluster:retrying({ timeout = 1 }, function()
+            g.cluster:retrying({ timeout = 5 }, function()
                 t.assert_not(server.net_box:eval('return box.space.first == nil'), server.alias)
             end)
         end
