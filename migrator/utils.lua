@@ -52,9 +52,27 @@ local function register_sharding_key(space_name, key)
     box.space._ddl_sharding_key:replace{space_name, key}
 end
 
+
+-- Check whether expected cartridge roles are enabled on a server.
+--- @param roles_list table array of role names
+---
+local function check_roles_enabled(roles_list)
+    local topology = require('cartridge.confapplier').get_readonly('topology')
+    local cur_roles = topology.replicasets[box.info.cluster.uuid].roles
+
+    for _, rname in pairs(roles_list) do
+        if cur_roles[rname] == nil then
+            return false
+        end
+    end
+
+    return true
+end
+
 return {
     value_in = value_in,
     compare = compare,
 
-    register_sharding_key = register_sharding_key
+    register_sharding_key = register_sharding_key,
+    check_roles_enabled = check_roles_enabled,
 }

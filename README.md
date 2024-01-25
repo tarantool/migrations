@@ -159,6 +159,36 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
       storage_timeout: 43200 # in seconds
   ```
 
+* To run migrations code on a specific roles use `utils.check_roles_enabled`:
+    ```lua
+        up = function()
+            local utils = require('migrator.utils')
+            if utils.check_roles_enabled({'vshard-storage'}) then
+                local f = box.schema.create_space('my_sharded_space', {
+                    format = {
+                        { name = 'key', type = 'string' },
+                        { name = 'bucket_id', type = 'unsigned' },
+                        { name = 'value', type = 'any', is_nullable = true }
+                    },
+                    if_not_exists = true,
+                })
+                f:create_index('primary', {
+                    parts = { 'key' },
+                    if_not_exists = true,
+                })
+                f:create_index('bucket_id', {
+                    parts = { 'bucket_id' },
+                    if_not_exists = true,
+                    unique = false
+                })
+                utils.register_sharding_key('my_sharded_space', {'key'})
+                return true
+            elseif utils.check_roles_enabled({'my-role'}) then
+                my_specific_role_logic()
+            end
+        end
+    ```
+
 ## Limitations
 - all migrations will be run on all cluster nodes (no partial migrations);
 - no pre-validation for migrations code (yet), so you should test them beforehands;

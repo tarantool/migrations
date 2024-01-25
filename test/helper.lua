@@ -21,6 +21,7 @@ helper.server_command = fio.pathjoin(helper.root, 'test', 'init.lua')
 t.before_suite(function()
     fio.rmtree(helper.datadir)
     fio.mktree(helper.datadir)
+    box.cfg{}
 end)
 
 return helper
