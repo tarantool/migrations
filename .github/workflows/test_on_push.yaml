@@ -4,27 +4,32 @@ on: [push]
 
 jobs:
   all:
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, Linux, x86_64, regular]
     container:
       image: centos:7
+
     timeout-minutes: 10
+
     env:
-      DOWNLOAD_TOKEN: ${{ secrets.DOWNLOAD_TOKEN }}
-      ROCKS_USERNAME: ${{ secrets.ROCKS_USERNAME }}
-      ROCKS_PASSWORD: ${{ secrets.ROCKS_PASSWORD }}
+      DOWNLOAD_TOKEN: ${{ secrets.SDK_DOWNLOAD_TOKEN }}
+
     steps:
       - name: Install centos packages
         run: |
           yum -y install epel-release https://repo.ius.io/ius-release-el7.rpm
           yum -y update
           yum -y install wget git cmake make unzip gcc gcc-c++
+
       - name: Checkout sources
         uses: actions/checkout@v3
+
       - name: Install sdk
         run: make sdk
+
       - name: Install rocks
         shell: bash
         run: source sdk/env.sh && make .rocks
+
       - name: Run tests
         run: make test
 

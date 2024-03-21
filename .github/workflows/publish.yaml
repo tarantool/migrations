@@ -9,33 +9,56 @@ jobs:
   version-check:
     # We need this job to run only on push with tag.
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
-    runs-on: ubuntu-20.04
+
+    runs-on: [self-hosted, Linux, x86_64, regular]
+    container:
+      image: ubuntu:22.04
+
     steps:
       - name: Check module version
         uses: tarantool/actions/check-module-version@master
         with:
           module-name: 'migrator'
 
-  publish-scm-1:
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - uses: tarantool/rocks.tarantool.org/github-action@master
-        with:
-          auth: ${{ secrets.ROCKS_AUTH }}
-          files: migrations-scm-1.rockspec
-
   publish-tag:
     if: startsWith(github.ref, 'refs/tags/')
     needs: version-check
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v3
 
-      - uses: tarantool/setup-tarantool@v2
+    runs-on: [self-hosted, Linux, x86_64, regular]
+    container:
+      image: ubuntu:22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install basic tools
+        run: |
+          apt-get -y update
+          apt-get --allow-releaseinfo-change update
+          apt-get -y install sudo git curl gcc make cmake unzip \
+          zip gawk cpio pkg-config build-essential ninja-build \
+          liblz4-dev autoconf automake libtool lsb-release rsync libunwind-dev \
+        shell: bash
+
+      # tzdata package, which is tarantool dependency, asks a user for time zone configuration. The
+      # step below disables user interaction for this package.
+      - name: Set tzdata
+        run: |
+          ln -fs /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+          echo "DEBIAN_FRONTEND=noninteractive" >> $GITHUB_ENV
+          echo "TZ=Europe/Moscow" >> $GITHUB_ENV
+        shell: bash
+
+      # Workaround for setup tarantool action: disable dpkg filters, so all files will be installed.
+      - name: Disable default dpkg excludes
+        run: echo "" > /etc/dpkg/dpkg.cfg.d/excludes
+        shell: bash
+
+      - name: Install tarantool
+        uses: tarantool/setup-tarantool@v3
         with:
           tarantool-version: '2.10'
+
       - run: echo $PWD/.rocks/bin >> $GITHUB_PATH
 
       # Make a release
@@ -43,10 +66,3 @@ jobs:
       - run: tarantoolctl rocks new_version --tag ${{ env.TAG }}
       - run: tarantoolctl rocks install migrations-${{ env.TAG }}-1.rockspec
       - run: tarantoolctl rocks pack migrations ${{ env.TAG }}
-
-      - uses: tarantool/rocks.tarantool.org/github-action@master
-        with:
-          auth: ${{ secrets.ROCKS_AUTH }}
-          files: |
-            migrations-${{ env.TAG }}-1.rockspec
-            migrations-${{ env.TAG }}-1.all.rock
