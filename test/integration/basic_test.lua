@@ -45,6 +45,7 @@ g.cluster = cartridge_helpers.Cluster:new({
 
 g.before_all(function() g.cluster:start() end)
 g.after_all(function() g.cluster:stop() end)
+g.after_each(function() utils.cleanup(g) end)
 
 local cases = {
     with_config_loader = function()
@@ -77,7 +78,6 @@ local cases = {
 
 for k, configure_func in pairs(cases) do
     g['test_basic_' .. k] = function()
-        utils.cleanup(g)
         configure_func()
 
         for _, server in pairs(g.cluster.servers) do
@@ -168,8 +168,6 @@ for k, configure_func in pairs(cases) do
 end
 
 g.test_gh_66_configurable_timeout = function(cg)
-    utils.cleanup(cg)
-
     local main = g.cluster.main_server
 
     main:eval([[
