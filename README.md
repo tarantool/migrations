@@ -64,7 +64,8 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
 5) What will happen then:
     * coordinator node (the one you curled upon) will trigger migrations execution on all replicaset leaders;
     * each replicaset leader will apply all available migrations and reply to coordinator;
-    * if all replies are successful, coordinator will apply changes to cluster-wide config - a list of applied migrations and (optionally) resulting ddl-schema.
+    * each replicaset leader stores a list of applied migrations in a space;
+    * if all replies are successful, coordinator will apply changes to the resulting cluster ddl-schema.
 
 6) That's it!
 

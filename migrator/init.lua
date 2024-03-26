@@ -2,11 +2,13 @@ local rpc = require('cartridge.rpc')
 local pool = require('cartridge.pool')
 local cartridge = require('cartridge')
 local confapplier = require('cartridge.confapplier')
+local get_topology_api = require('cartridge.lua-api.get-topology')
 
 local log = require('log')
 local fiber = require('fiber')
 local json = require('json')
 local checks = require('checks')
+local fun = require('fun')
 
 local ddl = require('ddl')
 
@@ -19,18 +21,18 @@ vars:new('loader', require('migrator.directory-loader').new())
 vars:new('use_cartridge_ddl', true)
 
 
-local function get_diff()
-    local names = {}
+local function get_diff(applied)
+    local to_apply = {}
     local migrations_map = {}
-    local config = confapplier.get_readonly('migrations') or {}
-    config.applied = config.applied or {}
     for _, migration in ipairs(vars.loader:list()) do
-        if not utils.value_in(migration.name, config.applied) then
-            table.insert(names, migration.name)
+        if utils.value_in(migration.name, applied) then
+            log.verbose('%s migration is already applied', migration.name)
+        else
+            table.insert(to_apply, migration.name)
             migrations_map[migration.name] = migration
         end
     end
-    return names, migrations_map
+    return to_apply, migrations_map
 end
 
 local function get_schema()
@@ -60,21 +62,54 @@ local function get_storage_timeout()
     return DEFAULT_STORAGE_TIMEOUT
 end
 
+-- Makes sure that the passed migrations match the list from the local reader.
+local function check_migrations_consistency(migrations_per_instance)
+    local names = fun.iter(vars.loader:list()):map(function(m) return m.name end):totable()
+    for host, applied in pairs(migrations_per_instance) do
+        if utils.compare(names, applied) == false then
+            local err_msg = string.format('Inconsistent migrations in cluster: ' ..
+            'expected: %s, applied on %s: %s', json.encode(names), host, json.encode(applied))
+            log.error(err_msg)
+            error(err_msg)
+        end
+    end
+end
+
+-- Makes sure there is no migrations list in cluster config.
+local function check_no_migrations_in_config()
+    local config = confapplier.get_readonly('migrations')
+    if config ~= nil and config.applied ~= nil and #config.applied > 0 then
+        error('Cannot perform an upgrade. A list of applied migrations is found in cluster ' ..
+            'config. Current migrator version works only with local list of applied migrations. ' ..
+            'Run "move_migrations_state" to move cluster-wide migrations state to local ' ..
+            'storage before up invocation.')
+    end
+end
+
+-- Returns server alias by URI.
+local function get_server_alias(instance_uri)
+    local servers = get_topology_api.get_servers(function(server)
+        return server.uri == instance_uri
+    end)
+    if not servers or #servers == 0 or #servers > 1 or not servers[1].alias then
+        return instance_uri
+    end
+    return servers[1].alias
+end
+
 --- Run migrations on all nodes in the cluster
 -- Throws an exception in case of any problems
 -- @function up
--- @return table list of applied migrations names, e. g. { "01_first.lua", "02_second.lua", "03_sharded.lua" }
+-- @return table of applied migration names grouped by host, e. g. {
+    -- [router] = {"01_first.lua", "02_second.lua", "03_sharded.lua"}
+    -- [s1-master] = {"03_sharded.lua"}
+-- }
+-- If no migrations applied, the table is empty.
 local function up()
-    local target_names = get_diff()
-
-    if #target_names == 0 then
-        log.info('No migrations to apply!')
-        return {}
-    end
-
-    log.info('Migrations to be applied: %s', json.encode(target_names))
+    check_no_migrations_in_config()
 
     local result = {}
+    local all_migrations = {}
     local fibers = {}
     for _, instance_uri in pairs(rpc.get_candidates('migrator', { leader_only = true })) do
         log.info('Preparing to run migrations on %s', instance_uri)
@@ -88,8 +123,13 @@ local function up()
                 log.warn('Cannot apply migrations on %s: %s', instance_uri, json.encode(err))
                 error(json.encode(err))
             end
-            log.verbose('Instance %s applied migrations: %s', instance_uri, json.encode(applied_migrations))
-            result[instance_uri] = applied_migrations
+            local server_alias = get_server_alias(instance_uri)
+            log.verbose('Instance %s applied migrations: %s',
+                server_alias, json.encode(applied_migrations.applied_now))
+            if #applied_migrations.applied_now > 0 then
+                result[server_alias] = applied_migrations.applied_now
+            end
+            all_migrations[instance_uri] = applied_migrations.applied
             return true
         end)
         f:set_joinable(true)
@@ -109,23 +149,9 @@ local function up()
     end
 
     log.verbose('All fibers joined, results are: %s', json.encode(result))
-
-    for instance_uri, applied in pairs(result) do
-        if not utils.compare(applied, target_names) then
-            local err_msg = string.format('Not all migrations applied on %s. Actual list: %s', instance_uri, json.encode(applied))
-            log.error(err_msg)
-            error(err_msg)
-        end
-    end
-
-    local config = confapplier.get_deepcopy('migrations') or {}
-    config.applied = config.applied or {}
-    for _, name in ipairs(target_names) do
-        table.insert(config.applied, name)
-    end
+    check_migrations_consistency(all_migrations)
 
     local patch = {
-        migrations = config,
         ['schema.yml'] = fetch_schema()
     }
     log.info('Migrations applied on all storages, changing clusterwide configuration...')
@@ -138,10 +164,49 @@ local function up()
     end
     log.info('Migrations applied successfully!')
 
-    return target_names
+    return result
 end
 
-local function init()
+--- Get list of applied migration names on local server.
+-- @function get_applied_local
+-- @return table of applied migration names on local server.
+local function get_applied_local()
+    local result = {}
+    local counter = 0
+    for _, migration in box.space._migrations:pairs() do
+        table.insert(result, migration['name'])
+        counter = counter + 1
+        if counter >= 1000 then
+            fiber.yield()
+            counter = 0
+        end
+    end
+    return result
+end
+
+local function init(opts)
+    -- Create space for storing applied migrations.
+    if opts.is_master then
+        box.schema.sequence.create('_migrations_id_seq', { if_not_exists = true })
+        box.schema.create_space('_migrations', {
+            format = {
+                {'id', type='unsigned', is_nullable=false},
+                {'name', type='string', is_nullable=false},
+            },
+            if_not_exists = true,
+        })
+        box.space._migrations:create_index('primary', {
+            sequence = '_migrations_id_seq',
+            if_not_exists = true,
+        })
+        -- Workaround for https://github.com/tarantool/ddl/issues/122
+        -- If index is created by ddl, sequence is not set. Check and update is required.
+        if box.space._migrations.index.primary ~= nil
+        and box.space._migrations.index.primary.sequence_id == nil then
+            box.space._migrations.index.primary:alter({sequence = '_migrations_id_seq'})
+        end
+    end
+
     local httpd = cartridge.service_get('httpd')
     if not httpd then return true end
 
@@ -153,18 +218,22 @@ local function init()
 end
 
 local function upgrade()
-    local result = {}
-    local names, migrations_map = get_diff()
-    for _, name in ipairs(names) do
+    check_no_migrations_in_config()
+
+    local migrations = {applied_now = {}, applied = get_applied_local()}
+    local to_apply, migrations_map = get_diff(migrations.applied)
+    for _, name in ipairs(to_apply) do
         local _, err = migrator_error:pcall(migrations_map[name].up)
         if err ~= nil then
             log.error('Migration %s not applied: %s', name, err)
             error(err)
         end
-        table.insert(result, name)
+        box.space._migrations:insert{box.NULL, name}
+        table.insert(migrations.applied_now, name)
+        table.insert(migrations.applied, name)
         log.verbose('Migration %s applied successfully', name)
     end
-    return result
+    return migrations
 end
 
 local function set_loader(loader)
