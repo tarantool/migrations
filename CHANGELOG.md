@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   Applied migration names are moved from the cluster-wide configuration to
   the space on each node.
 
+### Added:
+- An API for moving existing migration names from the cluster configuration to
+  a space.
+
 ## [0.7.0]
 ### Added:
 - `utils.check_roles_enabled` helper function
