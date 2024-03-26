@@ -190,6 +190,35 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
         end
     ```
 
+## Upgrade from 0.* versions.
+
+Applied migrations names storage method has been changed in `1.*` version: applied migrations list
+is stored on each cluster node separately in `_migrations` space. An additional step is required
+before applying migrations after update from `0.*`: call
+`curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/move_migrations_state` or connect
+to any instance of cluster and call `require('migrator').move_migrations_state()`. This method
+does the following:
+
+- copies applied migrations names from cluster-wide configuration to the `_migrations` space on
+  leader nodes.
+- if copying is succeeded on all leaders, removes the list from the cluster-wide configuration.
+
+## Rolling back to 0.* versions.
+
+To perform a downgrade from `1.*` to `0.*` version do the following:
+
+- get a list of the applied migrations using the `get_applied` API.
+- set list of migrations in cluster-wide config:
+```yaml
+    migrations:
+      applied:
+      - 01_migration.lua
+      - 02_migration.lua
+      . . .
+```
+- remove `_migrations` space and `_migrations_id_seq` on all nodes if necessary.
+- perform downgrade of the `migrations`.
+
 ## Limitations
 - all migrations will be run on all cluster nodes (no partial migrations);
 - no pre-validation for migrations code (yet), so you should test them beforehands;

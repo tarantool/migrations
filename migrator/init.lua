@@ -184,6 +184,84 @@ local function get_applied_local()
     return result
 end
 
+-- Append migration names to the _migrations space.
+local function append_migrations_to_local_space(migrations)
+    local copied_migrations = {}
+    local local_migrations = get_applied_local()
+    for i, migration in ipairs(migrations) do
+        if i <= #local_migrations then
+            if local_migrations[i] ~= migration then
+                local err_msg = string.format('Inconsistency between cluster-wide and local ' ..
+                'applied migrations list: migration #%d in config: %s, in local space: %s',
+                    i, migration, local_migrations[i])
+                log.error(err_msg)
+                error(err_msg)
+            end
+        else
+            box.space._migrations:insert{box.NULL, migration}
+            table.insert(copied_migrations, migration)
+        end
+    end
+    log.info("Migration names copied: %s", json.encode(copied_migrations))
+    return copied_migrations
+end
+
+--- Run applied migrations list copying from from cluster-wide config to local space on each storage.
+-- Throws an exception in case of any problems
+-- @function move_migrations_state
+-- @return table of instance uris with migration names copied.
+local function move_migrations_state(current_server_only)
+    local config = confapplier.get_readonly('migrations')
+
+    if config == nil or config.applied == nil or #config.applied == 0 then
+        log.info('There are no applied migrations in cluster config. Skip moving state.')
+        return {}
+    end
+
+    if current_server_only then
+        return append_migrations_to_local_space(config.applied)
+    end
+
+    -- Copy state on all leaders.
+    local leaders = rpc.get_candidates('migrator',{leader_only = true })
+    log.info('Preparing copying migrations on %s', json.encode(leaders))
+    local result, errmap = pool.map_call('_G.__cluster_rpc_call_local',
+        {'migrator', 'move_migrations_state', {true}}, {
+            uri_list = leaders,
+            timeout = get_storage_timeout(),
+        })
+    if errmap ~= nil then
+        for uri, err in pairs(errmap) do
+            log.error('Failed to copy migrations state from cluster config on %s: %s',
+                uri, json.encode(err))
+        end
+        error("Failed to copy migrations state: " .. json.encode(errmap))
+    end
+
+    -- Remove applied migrations from cluster-wide configuration.
+    local patch = {
+        ['migrations'] = {
+            ['applied'] = box.NULL
+        }
+    }
+    log.info('Migrations are copied on all storages, removing them from clusterwide configuration...')
+    log.verbose('Changing cluster-wide configuration with a patch: %s', json.encode(patch))
+
+    local _, err = cartridge.config_patch_clusterwide(patch)
+    if err ~= nil then
+        log.error(err)
+        error(err)
+    end
+    log.info('Applied migrations are moved successfully: %s', json.encode(leaders))
+
+    local migrations_by_alias = {}
+    for uri, migrations in pairs(result) do
+        migrations_by_alias[get_server_alias(uri)] = migrations
+    end
+
+    return migrations_by_alias
+end
+
 local function init(opts)
     -- Create space for storing applied migrations.
     if opts.is_master then
@@ -212,6 +290,12 @@ local function init(opts)
 
     httpd:route({ path = '/migrations/up', method = 'POST' }, function(req)
         local resp = req:render({ json = { applied = up() }})
+        resp.status = 200
+        return resp
+    end)
+
+    httpd:route({ path = '/migrations/move_migrations_state', method = 'POST' }, function(req)
+        local resp = req:render({ json = { migrations_moved = move_migrations_state() }})
         resp.status = 200
         return resp
     end)
@@ -277,6 +361,8 @@ return {
     set_use_cartridge_ddl = set_use_cartridge_ddl,
 
     get_schema = get_schema,
+
+    move_migrations_state = move_migrations_state,
 
     _VERSION = require('migrator.version'),
 }
