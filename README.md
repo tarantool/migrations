@@ -190,6 +190,11 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
         end
     ```
 
+* To get a list of applied migrations make a GET request to
+  `http://<your_tarantool_ip>:<http_port>/migrations/applied` or call
+  `require('migrator').get_applied()` on any cluster instance. This method will return a list of
+  applied migrations grouped by a leader node.
+
 ## Upgrade from 0.* versions.
 
 Applied migrations names storage method has been changed in `1.*` version: applied migrations list

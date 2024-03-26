@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added:
 - An API for moving existing migration names from the cluster configuration to
   a space.
+- API for getting applied migrations list for the cluster.
 
 ## [0.7.0]
 ### Added:

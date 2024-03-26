@@ -184,6 +184,34 @@ local function get_applied_local()
     return result
 end
 
+--- Get list of applied migration names in cluster.
+-- Throws an exception in case of any problems
+-- @function get_applied
+-- @return table of applied migrations in cluster grouped by leader aliases.
+local function get_applied()
+    local leaders = rpc.get_candidates('migrator',{ leader_only = true })
+    log.info('Preparing getting applied migrations from %s', json.encode(leaders))
+    local result, errmap = pool.map_call('_G.__cluster_rpc_call_local',
+        {'migrator', 'get_applied_local'}, {
+            uri_list = leaders,
+            timeout = get_storage_timeout(),
+        })
+    if errmap ~= nil then
+        for uri, err in pairs(errmap) do
+            log.error('Cannot get migrations state from %s: %s',
+                uri, json.encode(err))
+        end
+        error("Failed to get migrations state: " .. json.encode(errmap))
+    end
+
+    local migrations_by_alias = {}
+    for uri, migrations in pairs(result) do
+        migrations_by_alias[get_server_alias(uri)] = migrations
+    end
+
+    return migrations_by_alias
+end
+
 -- Append migration names to the _migrations space.
 local function append_migrations_to_local_space(migrations)
     local copied_migrations = {}
@@ -299,6 +327,12 @@ local function init(opts)
         resp.status = 200
         return resp
     end)
+
+    httpd:route({ path = '/migrations/applied', method = 'GET' }, function(req)
+        local resp = req:render({ json = { applied = get_applied() }})
+        resp.status = 200
+        return resp
+    end)
 end
 
 local function upgrade()
@@ -363,6 +397,8 @@ return {
     get_schema = get_schema,
 
     move_migrations_state = move_migrations_state,
+    get_applied = get_applied,
+    get_applied_local = get_applied_local,
 
     _VERSION = require('migrator.version'),
 }
