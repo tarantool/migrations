@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed:
+- Migrations do not apply to newly added replica sets in the cluster (gh-65)
+  Applied migration names are moved from the cluster-wide configuration to
+  the space on each node.
+
 ## [0.7.0]
 ### Added:
 - `utils.check_roles_enabled` helper function

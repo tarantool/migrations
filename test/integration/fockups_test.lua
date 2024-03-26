@@ -153,7 +153,8 @@ g.test_inconsistent_migrations = function()
 
     local status, resp = g.cluster.main_server:eval("return pcall(function() require('migrator').up() end)")
     t.assert_equals(status, false)
-    t.assert_str_contains(tostring(resp), 'Not all migrations applied')
+    t.assert_str_contains(tostring(resp), 'Inconsistent migrations in cluster: '
+    .. 'expected: [\"102_local\"],')
 end
 
 g.test_reload = function()
@@ -222,6 +223,23 @@ g.test_up_on_replica = function()
         }
     ]] } })
     g.cluster:server('storage-1-2'):http_request('post', '/migrations/up', { json = {} })
+end
+
+g.test_up_clusterwide_applied_migrations_exist = function(cg)
+    local main = cg.cluster.main_server
+    -- Simulate previous version configuration.
+    local _, err = main:eval([[
+        require('cartridge').config_patch_clusterwide({
+            migrations = {
+                applied = { '001.lua', '002.lua' }
+            }
+        })
+    ]])
+    t.assert_not(err)
+
+    local status, resp = main:eval([[ return pcall(require('migrator').up) ]])
+    t.assert_not(status)
+    t.assert_str_contains(tostring(resp), 'A list of applied migrations is found in cluster config')
 end
 
 g.after_each(function()
