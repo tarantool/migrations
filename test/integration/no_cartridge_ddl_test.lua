@@ -41,6 +41,7 @@ g.before_all(function()
     end
 end)
 g.after_all(function() g.cluster:stop() end)
+g.after_each(function() utils.cleanup(g) end)
 
 local cases = {
     with_config_loader = function()
@@ -73,7 +74,6 @@ local cases = {
 
 for k, configure_func in pairs(cases) do
     g['test_no_cartridge_ddl_' .. k] = function()
-        utils.cleanup(g)
         configure_func()
 
         local main = g.cluster.main_server

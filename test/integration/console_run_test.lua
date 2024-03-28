@@ -45,6 +45,7 @@ g.cluster = cartridge_helpers.Cluster:new({
 
 g.before_all(function() g.cluster:start() end)
 g.after_all(function() g.cluster:stop() end)
+g.after_each(function() utils.cleanup(g) end)
 
 local cases = {
     with_config_loader = function()
@@ -77,14 +78,17 @@ local cases = {
 
 for k, configure_func in pairs(cases) do
     g['test_run_from_console_' .. k] = function()
-        utils.cleanup(g)
         configure_func()
 
         for _, server in pairs(g.cluster.servers) do
             t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
         end
         local result = g.cluster.main_server.net_box:eval('return require("migrator").up()')
-        t.assert_equals(result, { "01_first.lua", "02_second.lua", "03_sharded.lua" })
+        t.assert_equals(result, {
+            ["api-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"},
+            ["storage-1-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"},
+            ["storage-2-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"}
+        })
         g.cluster:retrying({ timeout = 5 }, function()
             for _, server in pairs(g.cluster.servers) do
                 t.assert_not(server.net_box:eval('return box.space.first == nil'))

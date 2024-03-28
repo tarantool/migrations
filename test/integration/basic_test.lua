@@ -45,6 +45,7 @@ g.cluster = cartridge_helpers.Cluster:new({
 
 g.before_all(function() g.cluster:start() end)
 g.after_all(function() g.cluster:stop() end)
+g.after_each(function() utils.cleanup(g) end)
 
 local cases = {
     with_config_loader = function()
@@ -77,7 +78,6 @@ local cases = {
 
 for k, configure_func in pairs(cases) do
     g['test_basic_' .. k] = function()
-        utils.cleanup(g)
         configure_func()
 
         for _, server in pairs(g.cluster.servers) do
@@ -99,16 +99,34 @@ for k, configure_func in pairs(cases) do
             end)
         end
 
-        local expected_applied = { "01_first.lua", "02_second.lua", "03_sharded.lua" }
+        local expected_applied = {
+            ["api-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"},
+            ["storage-1-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"},
+            ["storage-2-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"},
+        }
         t.assert_equals(result.json, { applied = expected_applied })
 
         local config = main:download_config()
         t.assert_covers(config, {
-            migrations = { applied = expected_applied }
-        })
-        t.assert_covers(config, {
             schema = {
                 spaces = {
+                    _migrations = {
+                        engine = "memtx",
+                        format = {
+                            {is_nullable = false, name = "id", type = "unsigned"},
+                            {is_nullable = false, name = "name", type = "string"}
+                        },
+                        indexes = {
+                            {
+                                name = "primary",
+                                parts = {{is_nullable = false, path = "id", type = "unsigned"}},
+                                type = "TREE",
+                                unique = true,
+                            },
+                        },
+                        is_local = false,
+                        temporary = false,
+                    },
                     first = {
                         engine = "memtx",
                         format = {
@@ -168,8 +186,6 @@ for k, configure_func in pairs(cases) do
 end
 
 g.test_gh_66_configurable_timeout = function(cg)
-    utils.cleanup(cg)
-
     local main = g.cluster.main_server
 
     main:eval([[

@@ -64,7 +64,8 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
 5) What will happen then:
     * coordinator node (the one you curled upon) will trigger migrations execution on all replicaset leaders;
     * each replicaset leader will apply all available migrations and reply to coordinator;
-    * if all replies are successful, coordinator will apply changes to cluster-wide config - a list of applied migrations and (optionally) resulting ddl-schema.
+    * each replicaset leader stores a list of applied migrations in a space;
+    * if all replies are successful, coordinator will apply changes to the resulting cluster ddl-schema.
 
 6) That's it!
 
@@ -188,6 +189,38 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
             end
         end
     ```
+
+* To get a list of applied migrations make a POST request to
+  `http://<your_tarantool_ip>:<http_port>/migrations/applied` or a call
+  `require('migrator').get_applied()`on any cluster instance. This method will return a list of
+  applied migrations grouped by a leader node.
+
+## Upgrade from 0.* versions.
+
+Applied migrations names storage method has been changed in `1.*` version: applied migrations list
+is stored on each cluster node separately in `_migrations` space. An additional step is required
+before applying migrations after update from `0.*`: call
+`curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/move_migrations_state` or connect
+to any instance of cluster and call `require('migrator').move_migrations_state()`. This method
+does the following:
+- copies applied migrations names from cluster-wide configuration to local space on leader nodes.
+- if copying is succeeded on all leaders, removes the list from the cluster-wide configuration.
+
+## Rolling back to 0.* versions.
+
+To perform a downgrade from `1.*` to `0.*` version do the following:
+
+- get a list of the applied migrations using the `get_applied` API.
+- set list of migrations in cluster-wide config:
+```yaml
+    migrations:
+      applied:
+      - 01_migration.lua
+      - 02_migration.lua
+      . . .
+```
+- remove `_migrations` space and `_migrations_id_seq` on all nodes if necessary.
+- perform downgrade of the `migrations`.
 
 ## Limitations
 - all migrations will be run on all cluster nodes (no partial migrations);
