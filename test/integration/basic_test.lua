@@ -107,7 +107,8 @@ for k, configure_func in pairs(cases) do
         t.assert_equals(result.json, { applied = expected_applied })
 
         local config = main:download_config()
-        t.assert_covers(config, {
+
+        local expected_schema = {
             schema = {
                 spaces = {
                     _migrations = {
@@ -120,6 +121,7 @@ for k, configure_func in pairs(cases) do
                             {
                                 name = "primary",
                                 parts = {{is_nullable = false, path = "id", type = "unsigned"}},
+                                sequence = "_migrations_id_seq",
                                 type = "TREE",
                                 unique = true,
                             },
@@ -175,10 +177,22 @@ for k, configure_func in pairs(cases) do
                         sharding_key = { "key" },
                         temporary = false,
                     },
-
+                },
+                sequences = {
+                    _migrations_id_seq = {
+                        cache = 0,
+                        cycle = false,
+                        max = 9223372036854775807ULL,
+                        min = 1,
+                        start = 1,
+                        step = 1,
+                    },
                 },
             },
-        })
+        }
+
+        expected_schema = utils.downgrade_ddl_schema_if_required(expected_schema)
+        t.assert_covers(config, expected_schema)
 
         result = main:http_request('post', '/migrations/up', { json = {} })
         t.assert_equals(result.json, { applied = {} })
