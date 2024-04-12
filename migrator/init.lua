@@ -19,6 +19,7 @@ local migrator_error = require('errors').new_class(module_name)
 local utils = require('migrator.utils')
 vars:new('loader', require('migrator.directory-loader').new())
 vars:new('use_cartridge_ddl', true)
+vars:new('last_operation_error', nil)
 
 
 local function get_diff(applied)
@@ -63,12 +64,18 @@ local function get_storage_timeout()
 end
 
 -- Makes sure that the passed migrations match the list from the local reader.
-local function check_migrations_consistency(migrations_per_instance)
+local function check_migrations_consistency(migrations_per_instance, opts)
+    opts = opts or {}
+
     local names = fun.iter(vars.loader:list()):map(function(m) return m.name end):totable()
     for host, applied in pairs(migrations_per_instance) do
         if utils.compare(names, applied) == false then
             local err_msg = string.format('Inconsistent migrations in cluster: ' ..
             'expected: %s, applied on %s: %s', json.encode(names), host, json.encode(applied))
+
+            if opts.store_last_error then
+                vars.last_operation_error = err_msg
+            end
             log.error(err_msg)
             error(err_msg)
         end
@@ -76,13 +83,20 @@ local function check_migrations_consistency(migrations_per_instance)
 end
 
 -- Makes sure there is no migrations list in cluster config.
-local function check_no_migrations_in_config()
+local function check_no_migrations_in_config(opts)
+    opts = opts or {}
+
     local config = confapplier.get_readonly('migrations')
     if config ~= nil and config.applied ~= nil and #config.applied > 0 then
-        error('Cannot perform an upgrade. A list of applied migrations is found in cluster ' ..
+        local err_msg = 'Cannot perform an upgrade. A list of applied migrations is found in cluster ' ..
             'config. Current migrator version works only with local list of applied migrations. ' ..
             'Run "move_migrations_state" to move cluster-wide migrations state to local ' ..
-            'storage before up invocation.')
+            'storage before up invocation.'
+
+        if opts.store_last_error then
+            vars.last_operation_error = err_msg
+        end
+        error(err_msg)
     end
 end
 
@@ -106,7 +120,9 @@ end
 -- }
 -- If no migrations applied, the table is empty.
 local function up()
-    check_no_migrations_in_config()
+    vars.last_operation_error = nil
+
+    check_no_migrations_in_config{store_last_error = true}
 
     local result = {}
     local all_migrations = {}
@@ -144,12 +160,14 @@ local function up()
     end
     if #errors > 0 then
         local err_msg = string.format('Errors happened during migrations: %s', json.encode(errors))
+
+        vars.last_operation_error = err_msg
         log.error(err_msg)
         error(err_msg)
     end
 
     log.verbose('All fibers joined, results are: %s', json.encode(result))
-    check_migrations_consistency(all_migrations)
+    check_migrations_consistency(all_migrations, {store_last_error = true})
 
     local patch = {
         ['schema.yml'] = fetch_schema()
@@ -159,6 +177,7 @@ local function up()
 
     local _, err = cartridge.config_patch_clusterwide(patch)
     if err ~= nil then
+        vars.last_operation_error = err
         log.error(err)
         error(err)
     end
@@ -239,6 +258,8 @@ end
 -- @function move_migrations_state
 -- @return table of instance uris with migration names copied.
 local function move_migrations_state(current_server_only)
+    vars.last_operation_error = nil
+
     local config = confapplier.get_readonly('migrations')
 
     if config == nil or config.applied == nil or #config.applied == 0 then
@@ -263,7 +284,11 @@ local function move_migrations_state(current_server_only)
             log.error('Failed to copy migrations state from cluster config on %s: %s',
                 uri, json.encode(err))
         end
-        error("Failed to copy migrations state: " .. json.encode(errmap))
+
+        local err_msg = "Failed to copy migrations state: " .. json.encode(errmap)
+
+        vars.last_operation_error = err_msg
+        error(err_msg)
     end
 
     -- Remove applied migrations from cluster-wide configuration.
@@ -277,6 +302,7 @@ local function move_migrations_state(current_server_only)
 
     local _, err = cartridge.config_patch_clusterwide(patch)
     if err ~= nil then
+        vars.last_operation_error = err
         log.error(err)
         error(err)
     end
@@ -381,10 +407,23 @@ local function validate_config(conf_new)
     return true
 end
 
+local function get_issues()
+    if vars.last_operation_error ~= nil then
+        return {{
+            level = 'warning',
+            message = tostring(vars.last_operation_error),
+        }}
+    end
+
+    return {}
+end
+
 return {
     init = init,
 
     validate_config = validate_config,
+
+    get_issues = get_issues,
 
     permanent = true,
 

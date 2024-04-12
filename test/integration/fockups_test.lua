@@ -128,6 +128,16 @@ g.test_error_in_migrations = function()
     t.assert_equals(status, false)
     t.assert_str_contains(tostring(resp), 'Oops')
     t.assert_str_contains(tostring(resp), 'Errors happened during migrations')
+
+    utils.assert_cluster_has_migrator_issue{
+        main_server = g.cluster.main_server,
+        server_with_issue = g.cluster.main_server,
+        level = 'warning',
+        content_fragments = {
+            'Errors happened during migrations',
+            'Oops',
+        },
+    }
 end
 
 g.test_inconsistent_migrations = function()
@@ -155,6 +165,15 @@ g.test_inconsistent_migrations = function()
     t.assert_equals(status, false)
     t.assert_str_contains(tostring(resp), 'Inconsistent migrations in cluster: '
     .. 'expected: [\"102_local\"],')
+
+    utils.assert_cluster_has_migrator_issue{
+        main_server = g.cluster.main_server,
+        server_with_issue = g.cluster.main_server,
+        level = 'warning',
+        content_fragments = {
+            'Inconsistent migrations in cluster: expected: [\"102_local\"],',
+        },
+    }
 end
 
 g.test_reload = function()
@@ -240,6 +259,64 @@ g.test_up_clusterwide_applied_migrations_exist = function(cg)
     local status, resp = main:eval([[ return pcall(require('migrator').up) ]])
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'A list of applied migrations is found in cluster config')
+
+    utils.assert_cluster_has_migrator_issue{
+        main_server = g.cluster.main_server,
+        server_with_issue = g.cluster.main_server,
+        level = 'warning',
+        content_fragments = {
+            'A list of applied migrations is found in cluster config',
+        },
+    }
+end
+
+g.test_inconsistent_migration_cartridge_issue_cleaned_after_fix = function()
+    local no_migrations_eval = [[
+        require('migrator').set_loader({
+            list = function() return {} end
+        })
+    ]]
+    local one_migration_eval = [[
+        require('migrator').set_loader({
+            list = function(_)
+                return {
+                    {
+                        name = '102_local',
+                        up = function() return true end
+                    },
+                }
+            end
+        })
+    ]]
+
+    for _, server in pairs(g.cluster.servers) do
+        server.net_box:eval(no_migrations_eval)
+    end
+    g.cluster.main_server.net_box:eval(one_migration_eval)
+
+    local status, resp = g.cluster.main_server:eval("return pcall(require('migrator').up)")
+    t.assert_equals(status, false)
+    t.assert_str_contains(
+        tostring(resp),
+        'Inconsistent migrations in cluster: expected: [\"102_local\"],'
+    )
+
+    utils.assert_cluster_has_migrator_issue{
+        main_server = g.cluster.main_server,
+        server_with_issue = g.cluster.main_server,
+        level = 'warning',
+        content_fragments = {
+            'Inconsistent migrations in cluster: expected: [\"102_local\"],',
+        },
+    }
+
+    for _, server in pairs(g.cluster.servers) do
+        server.net_box:eval(one_migration_eval)
+    end
+    status, resp = g.cluster.main_server:eval("return pcall(require('migrator').up)")
+    t.assert_equals(status, true, resp)
+
+    utils.assert_cluster_has_no_migrator_issues{main_server = g.cluster.main_server}
 end
 
 g.after_each(function()

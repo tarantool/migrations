@@ -9,7 +9,7 @@ local utils = require("test.helper.utils")
 local datadir = fio.pathjoin(shared.datadir, 'move_migrations_state')
 
 g.before_all(function()
-    g.cluster = cartridge_helpers.Cluster:new({
+    g.cluster_cfg = {
         server_command = shared.server_command,
         datadir = datadir,
         use_vshard = true,
@@ -59,7 +59,8 @@ g.before_all(function()
                 },
             },
         },
-    })
+    }
+    g.cluster = cartridge_helpers.Cluster:new(g.cluster_cfg)
 
     g.cluster:start()
 end)
@@ -241,6 +242,17 @@ g.test_move_migrations_consistency_check = function(cg)
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'Inconsistency between cluster-wide and local applied migrations')
 
+    -- Ensure fail is exposed to cartridge issues.
+    utils.assert_cluster_has_migrator_issue{
+        main_server = main,
+        server_with_issue = main,
+        level = 'warning',
+        content_fragments = {
+            'Failed to copy migrations state',
+            'Inconsistency between cluster-wide and local applied migrations',
+        },
+    }
+
     -- Make sure cluster-wide migrations state is still there.
     t.assert(main:eval([[
         return require('cartridge.confapplier').get_readonly('migrations').applied ~= nil
@@ -292,4 +304,56 @@ g.test_move_migrations_append_to_existing_local = function(cg)
     t.assert(main:eval([[
         return require('cartridge.confapplier').get_readonly('migrations').applied == nil
     ]]))
+end
+
+g.test_move_migrations_inconsistency_cartridge_issue_cleaned_after_fix = function(cg)
+    local main = cg.cluster.main_server
+
+    local status, resp = main:eval([[
+        return pcall(require('cartridge').config_patch_clusterwide,
+            {migrations = {applied = {}}})
+    ]])
+    t.assert(status, tostring(resp))
+
+    -- Apply all migrations.
+    status, resp = main:eval("return pcall(require('migrator').up)")
+    t.assert(status, tostring(resp))
+    t.assert_equals(resp, {
+        ['router'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
+        ['storage-1-master'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
+        ['storage-2-master'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
+    })
+
+    main:eval([[
+        require('cartridge').config_patch_clusterwide({
+            migrations = {applied = { '01_first.lua', '03_sharded.lua' }},
+        })
+    ]])
+    status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
+    t.assert_not(status)
+    t.assert_str_contains(tostring(resp), 'Inconsistency between cluster-wide and local applied migrations')
+
+    -- Ensure fail is exposed to cartridge issues.
+    utils.assert_cluster_has_migrator_issue{
+        main_server = main,
+        server_with_issue = main,
+        level = 'warning',
+        content_fragments = {
+            'Failed to copy migrations state',
+            'Inconsistency between cluster-wide and local applied migrations',
+        },
+    }
+
+    -- Fix consistency.
+    main:eval([[
+        require('cartridge').config_patch_clusterwide({
+            migrations = {applied = { '01_first.lua', '02_second.lua', '03_sharded.lua' }},
+        })
+    ]])
+
+    status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
+    t.assert_equals(status, true, resp)
+
+    -- Ensure previous fail is cleaned up from cartridge issues.
+    utils.assert_cluster_has_no_migrator_issues{main_server = cg.cluster.main_server}
 end

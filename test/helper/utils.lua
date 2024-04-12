@@ -1,3 +1,5 @@
+local checks = require('checks')
+
 local t = require('luatest')
 local luatest_utils = require('luatest.utils')
 
@@ -123,8 +125,57 @@ local function downgrade_ddl_schema_if_required(ddl_schema)
     return ddl_schema
 end
 
+local function get_cluster_migrator_issues(main_server)
+    local cluster_issues = main_server:exec(function()
+        return require('cartridge.issues').list_on_cluster()
+    end)
+
+    local migrator_issues = {}
+    for _, issue in ipairs(cluster_issues) do
+        if issue.topic == 'migrator' then
+            table.insert(migrator_issues, issue)
+        end
+    end
+
+    return migrator_issues
+end
+
+local function assert_cluster_has_migrator_issue(opts)
+    checks({
+        main_server = 'table',
+        server_with_issue = 'table',
+        level = 'string',
+        content_fragments = 'table',
+    })
+
+    local migrator_issues = get_cluster_migrator_issues(opts.main_server)
+    t.assert_not_equals(migrator_issues, {}, 'issues found')
+    t.assert_equals(#migrator_issues, 1, ('only one issue expected, got %s'):format(migrator_issues))
+
+    local issue = migrator_issues[1]
+    t.assert_equals(issue.level, opts.level)
+    t.assert_equals(issue.replicaset_uuid, opts.server_with_issue.replicaset_uuid)
+    t.assert_equals(issue.instance_uuid, opts.server_with_issue.instance_uuid)
+    t.assert_equals(issue.topic, 'migrator')
+
+    for _, fragment in ipairs(opts.content_fragments) do
+        t.assert_str_contains(issue.message, fragment)
+    end
+end
+
+local function assert_cluster_has_no_migrator_issues(opts)
+    checks({
+        main_server = 'table',
+    })
+
+    local migrator_issues = get_cluster_migrator_issues(opts.main_server)
+    t.assert_equals(migrator_issues, {}, 'issues not found')
+end
+
 return {
     set_sections = set_sections,
     cleanup = cleanup,
     downgrade_ddl_schema_if_required = downgrade_ddl_schema_if_required,
+    assert_cluster_has_migrator_issue = assert_cluster_has_migrator_issue,
+    assert_cluster_has_no_migrator_issues = assert_cluster_has_no_migrator_issues,
 }
