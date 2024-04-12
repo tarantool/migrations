@@ -1,4 +1,5 @@
 local t = require('luatest')
+local luatest_utils = require('luatest.utils')
 
 local function set_sections(g, sections)
     return g.cluster.main_server:graphql({ query = [[
@@ -83,7 +84,47 @@ local function cleanup(g)
     end)
 end
 
+local function parse_module_version(str)
+    -- https://github.com/tarantool/luatest/blob/f37b353b77be50a1f1ce87c1ff2edf0c1b96d5d1/luatest/utils.lua#L166-L173
+    local splitstr = str:split('.')
+    local major = tonumber(splitstr[1]:match('%d+'))
+    local minor = tonumber(splitstr[2]:match('%d+'))
+    local patch = tonumber(splitstr[3]:match('%d+'))
+    return luatest_utils.version(major, minor, patch)
+end
+
+local function is_ddl_supports_sequences()
+    local ddl = require('ddl')
+
+    if ddl._VERSION == nil then
+        return false
+    end
+
+    local parsed_ddl_version = parse_module_version(ddl._VERSION)
+    local are_sequences_supported = luatest_utils.version_ge(
+        parsed_ddl_version,
+        luatest_utils.version(1, 7, 0)
+    )
+
+    return are_sequences_supported
+end
+
+local function downgrade_ddl_schema_if_required(ddl_schema)
+    if not is_ddl_supports_sequences then
+        for _, space in pairs(ddl_schema.spaces) do
+            for _, index in ipairs(space.indexes) do
+                index.sequence = nil
+            end
+        end
+
+        ddl_schema.sequences = nil
+    end
+
+    return ddl_schema
+end
+
 return {
     set_sections = set_sections,
     cleanup = cleanup,
+    downgrade_ddl_schema_if_required = downgrade_ddl_schema_if_required,
 }
