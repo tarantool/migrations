@@ -25,7 +25,7 @@ lint:
 
 test: lint
 	rm -f luacov*
-	.rocks/bin/luatest --verbose --shuffle all --coverage
+	.rocks/bin/luatest --verbose --coverage
 	.rocks/bin/luacov . && grep -A999 '^Summary' tmp/luacov.report.out
 
 push-scm-1:

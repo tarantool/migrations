@@ -15,8 +15,6 @@ g.before_all(function()
         server_command = shared.server_command,
         datadir = datadir,
         use_vshard = false,
-        base_advertise_port = 13400,
-        base_http_port = 8090,
         replicasets = {
             {
                 alias = 'storage-1',

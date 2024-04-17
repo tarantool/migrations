@@ -11,40 +11,45 @@ local utils = require("test.helper.utils")
 
 local datadir = fio.pathjoin(shared.datadir, 'basic')
 
-g.cluster = cartridge_helpers.Cluster:new({
-    server_command = shared.server_command,
-    datadir = datadir,
-    use_vshard = true,
-    replicasets = {
-        {
-            alias = 'api',
-            uuid = cartridge_helpers.uuid('a'),
-            roles = { 'vshard-router' },
-            servers = { { instance_uuid = cartridge_helpers.uuid('a', 1) } },
-        },
-        {
-            alias = 'storage-1',
-            uuid = cartridge_helpers.uuid('b'),
-            roles = { 'vshard-storage' },
-            servers = {
-                { instance_uuid = cartridge_helpers.uuid('b', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
-                { instance_uuid = cartridge_helpers.uuid('b', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+g.before_all(function()
+    g.cluster = cartridge_helpers.Cluster:new({
+        server_command = shared.server_command,
+        datadir = datadir,
+        use_vshard = true,
+        replicasets = {
+            {
+                alias = 'api',
+                uuid = cartridge_helpers.uuid('a'),
+                roles = { 'vshard-router' },
+                servers = { { instance_uuid = cartridge_helpers.uuid('a', 1) } },
+            },
+            {
+                alias = 'storage-1',
+                uuid = cartridge_helpers.uuid('b'),
+                roles = { 'vshard-storage' },
+                servers = {
+                    { instance_uuid = cartridge_helpers.uuid('b', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                    { instance_uuid = cartridge_helpers.uuid('b', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                },
+            },
+            {
+                alias = 'storage-2',
+                uuid = cartridge_helpers.uuid('c'),
+                roles = { 'vshard-storage' },
+                servers = {
+                    { instance_uuid = cartridge_helpers.uuid('c', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                    { instance_uuid = cartridge_helpers.uuid('c', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                },
             },
         },
-        {
-            alias = 'storage-2',
-            uuid = cartridge_helpers.uuid('c'),
-            roles = { 'vshard-storage' },
-            servers = {
-                { instance_uuid = cartridge_helpers.uuid('c', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
-                { instance_uuid = cartridge_helpers.uuid('c', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
-            },
-        },
-    },
-})
+    })
+    g.cluster:start()
+end)
 
-g.before_all(function() g.cluster:start() end)
-g.after_all(function() g.cluster:stop() end)
+g.after_all(function()
+    g.cluster:stop()
+    fio.rmtree(g.cluster.datadir)
+end)
 g.after_each(function() utils.cleanup(g) end)
 
 local cases = {

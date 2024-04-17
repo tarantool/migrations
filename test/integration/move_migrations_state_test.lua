@@ -13,7 +13,6 @@ g.before_all(function()
         server_command = shared.server_command,
         datadir = datadir,
         use_vshard = true,
-        base_advertise_port = 10600,
         replicasets = {
             {
                 alias = 'router',
