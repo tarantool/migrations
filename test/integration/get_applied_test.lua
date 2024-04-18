@@ -17,7 +17,7 @@ g.before_all(function()
             {
                 alias = 'router',
                 uuid = cartridge_helpers.uuid('a'),
-                roles = { 'vshard-router', 'migrator-ee' },
+                roles = { 'vshard-router' },
                 servers = { {
                     alias = 'router',
                     instance_uuid = cartridge_helpers.uuid('a', 1)
@@ -26,7 +26,7 @@ g.before_all(function()
             {
                 alias = 'storage-1',
                 uuid = cartridge_helpers.uuid('b'),
-                roles = { 'vshard-storage', 'migrator-ee' },
+                roles = { 'vshard-storage' },
                 servers = {
                     {
                         alias = 'storage-1-master',
@@ -43,7 +43,7 @@ g.before_all(function()
             {
                 alias = 'storage-2',
                 uuid = cartridge_helpers.uuid('c'),
-                roles = { 'vshard-storage', 'migrator-ee' },
+                roles = { 'vshard-storage' },
                 servers = {
                     {
                         alias = 'storage-2-master',

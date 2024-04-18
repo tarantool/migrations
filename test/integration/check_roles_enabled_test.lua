@@ -19,13 +19,13 @@ g.before_all(function(cg)
             {
                 alias = 'api',
                 uuid = cartridge_helpers.uuid('a'),
-                roles = { 'vshard-router', 'migrator-ee' },
+                roles = { 'vshard-router' },
                 servers = { { alias='api-master', instance_uuid = cartridge_helpers.uuid('a', 1) } },
             },
             {
                 alias = 'storage-role1-role2',
                 uuid = cartridge_helpers.uuid('b'),
-                roles = { 'vshard-storage', 'cartridge.roles.role1', 'cartridge.roles.role2', 'migrator-ee' },
+                roles = { 'vshard-storage', 'cartridge.roles.role1', 'cartridge.roles.role2' },
                 servers = {
                     {
                         alias = 'storage-role1-role2-master',
