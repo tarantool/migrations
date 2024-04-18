@@ -4,7 +4,7 @@ local g = t.group('directory-loader')
 local fun = require('fun')
 local fio = require('fio')
 
-local loader = require('migrator.directory-loader')
+local loader = require('migrator-ee.directory-loader')
 
 g.test_positive = function()
     local list = loader.new('test/unit/migrations/positive'):list()

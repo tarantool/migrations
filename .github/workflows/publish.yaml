@@ -18,7 +18,7 @@ jobs:
       - name: Check module version
         uses: tarantool/actions/check-module-version@master
         with:
-          module-name: 'migrator'
+          module-name: 'migrator-ee'
 
   publish-tag:
     if: startsWith(github.ref, 'refs/tags/')

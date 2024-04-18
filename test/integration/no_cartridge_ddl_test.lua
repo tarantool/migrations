@@ -34,7 +34,7 @@ g.before_all(function()
     })
     g.cluster:start()
     for _, server in ipairs(g.cluster.servers) do
-        server.net_box:eval("require('migrator').set_use_cartridge_ddl(false)")
+        server.net_box:eval("require('migrator-ee').set_use_cartridge_ddl(false)")
     end
 end)
 g.after_all(function()
@@ -47,8 +47,8 @@ local cases = {
     with_config_loader = function()
         for _, server in pairs(g.cluster.servers) do
             server.net_box:eval([[
-                require('migrator').set_loader(
-                    require('migrator.config-loader').new()
+                require('migrator-ee').set_loader(
+                    require('migrator-ee.config-loader').new()
                 )
             ]])
         end
@@ -64,8 +64,8 @@ local cases = {
     with_directory_loader = function()
         for _, server in pairs(g.cluster.servers) do
             server.net_box:eval([[
-                require('migrator').set_loader(
-                    require('migrator.directory-loader').new('test/integration/migrations')
+                require('migrator-ee').set_loader(
+                    require('migrator-ee.directory-loader').new('test/integration/migrations')
                 )
             ]])
         end

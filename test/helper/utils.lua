@@ -18,7 +18,7 @@ end
 local function cleanup(g)
     local sections = g.cluster.main_server.net_box:eval([[
         return require('fun').iter(
-            require('migrator.config-loader').new():list()
+            require('migrator-ee.config-loader').new():list()
         ):map(function(x) return x.name end):totable()
     ]])
     for _, name in pairs(sections) do
@@ -72,8 +72,8 @@ local function cleanup(g)
 
     -- Reset loader to default.
     for _, server in pairs(g.cluster.servers) do
-        server:eval([[require('migrator').set_loader(
-            require('migrator.directory-loader').new('test/integration/migrations'))
+        server:eval([[require('migrator-ee').set_loader(
+            require('migrator-ee.directory-loader').new('test/integration/migrations'))
         ]])
     end
 

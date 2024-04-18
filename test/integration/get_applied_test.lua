@@ -17,7 +17,7 @@ g.before_all(function()
             {
                 alias = 'router',
                 uuid = cartridge_helpers.uuid('a'),
-                roles = { 'vshard-router', 'migrator' },
+                roles = { 'vshard-router', 'migrator-ee' },
                 servers = { {
                     alias = 'router',
                     instance_uuid = cartridge_helpers.uuid('a', 1)
@@ -26,7 +26,7 @@ g.before_all(function()
             {
                 alias = 'storage-1',
                 uuid = cartridge_helpers.uuid('b'),
-                roles = { 'vshard-storage', 'migrator' },
+                roles = { 'vshard-storage', 'migrator-ee' },
                 servers = {
                     {
                         alias = 'storage-1-master',
@@ -43,7 +43,7 @@ g.before_all(function()
             {
                 alias = 'storage-2',
                 uuid = cartridge_helpers.uuid('c'),
-                roles = { 'vshard-storage', 'migrator' },
+                roles = { 'vshard-storage', 'migrator-ee' },
                 servers = {
                     {
                         alias = 'storage-2-master',
@@ -73,7 +73,7 @@ g.after_each(function() utils.cleanup(g) end)
 g.test_get_migrations_state = function(cg)
     local main = cg.cluster.main_server
 
-    local status, resp = main:eval("return pcall(require('migrator').up)")
+    local status, resp = main:eval("return pcall(require('migrator-ee').up)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ['router'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
@@ -81,7 +81,7 @@ g.test_get_migrations_state = function(cg)
         ['storage-2-master'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
     })
 
-    status, resp = main:eval("return pcall(require('migrator').get_applied)")
+    status, resp = main:eval("return pcall(require('migrator-ee').get_applied)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ['router'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },

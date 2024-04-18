@@ -1,4 +1,4 @@
-local utils = require('migrator.utils')
+local utils = require('migrator-ee.utils')
 
 return {
     up = function()

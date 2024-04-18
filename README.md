@@ -1,30 +1,112 @@
-# Migrations manager for Tarantool Cartridge
+# Migrations enterprise manager for Tarantool Cartridge
 
 @lookup README.md
 
-Migrations module allows you to run cluster-wide migrations for your data.
+Migrations enterprise module allows you to run cluster-wide migrations for your data.
 
 It stores the list of applied migrations in cluster-wide config and applies resulting schema to cartridge `ddl`.
 
+## Migration from `migrations` CE module
+
+To migrate from [migrations CE module](https://github.com/tarantool/migrations) you should:
+
+1. Change rockspec dependency from `migrations` to `migrations-ee`:
+
+    from:
+
+    ```lua
+    dependencies = {
+        'migrations == <the-latest-tag>-1',
+    }
+    ```
+
+    to:
+
+    ```lua
+    dependencies = {
+        'migrations-ee == <the-latest-tag>-1',
+    }
+    ```
+
+2. Change requires in app code:
+
+    from:
+
+    ```lua
+    local migrator = require('migrator')
+    ```
+
+    to:
+
+    ```lua
+    local migrator = require('migrator-ee')
+    ```
+
+3. Change name of cartridge role:
+
+    Change name of cartridge role from `migrator` to `migrator-ee`
+
+    Example:
+
+    from:
+
+    ```lua
+    local ok, err = cartridge.cfg({
+        roles = {
+            'cartridge.roles.migrator',
+        },
+    })
+    ```
+
+    to:
+
+    ```lua
+    local ok, err = cartridge.cfg({
+        roles = {
+            'cartridge.roles.migrator-ee',
+        },
+    })
+    ```
+
+4. Change name in clusterwide config section:
+
+    from:
+
+    ```yaml
+    migrations:
+        options:
+            storage_timeout: 43200 # in seconds
+    ```
+
+    to:
+
+    ```yaml
+    migrations-ee:
+        options:
+            storage_timeout: 43200 # in seconds
+    ```
+
+    If you store configuration in a separate `migrations.yml` file, you need to rename it to `migrations-ee.yml` also.
+
 ## Usage
 
-1)  Add `migrations` dependency:
+1)  Add `migrations-ee` dependency:
     ```lua
     -- <project-name>-scm-1.rockspec
         dependencies = {
             ...
-            'migrations == <the-latest-tag>-1',
+            'migrations-ee == <the-latest-tag>-1',
             ...
         }
     ```
 
-2) Add `migrator` to the list of cartridge roles in `init.lua`:
+2) Add `migrator-ee` to the list of cartridge roles in `init.lua`:
     ```lua
     -- init.lua
     ....
     cartridge.cfg({
       roles = {
-        'migrator',
+        'migrator-ee',
         ....
       }
     })
@@ -35,7 +117,7 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
     ```lua
     return {
         up = function()
-        local utils = require('migrator.utils')
+        local utils = require('migrator-ee.utils')
         local f = box.schema.create_space('my_sharded_space', {
             format = {
                 { name = 'key', type = 'string' },
@@ -59,7 +141,7 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
     }
     ```
 
-4) Call `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/up` once you are ready to migrate or connect to any instance of cluster and call `require('migrator').up()`.
+4) Call `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/up` once you are ready to migrate or connect to any instance of cluster and call `require('migrator-ee').up()`.
 
 5) What will happen then:
     * coordinator node (the one you curled upon) will trigger migrations execution on all replicaset leaders;
@@ -76,18 +158,18 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
 1) Change directory where migrations are located: embed the following to init.lua
 
     ```lua
-    local migrator = require('migrator')
-    local my_directory_loader = require('migrator.directory-loader').new('test/integration/migrations')
+    local migrator = require('migrator-ee')
+    local my_directory_loader = require('migrator-ee.directory-loader').new('test/integration/migrations')
     migrator.set_loader(my_directory_loader)
     ```
 
-2) ... or use `migrator.config-loader` to load migrations from Tarantool Cartridge clusterwide config.
+2) ... or use `migrator-ee.config-loader` to load migrations from Tarantool Cartridge clusterwide config.
 
-    Configure `migrator` to use `config-loader`:
+    Configure `migrator-ee` to use `config-loader`:
 
     ```lua
-    local migrator = require('migrator')
-    local config_loader = require('migrator.config-loader').new()
+    local migrator = require('migrator-ee')
+    local config_loader = require('migrator-ee.config-loader').new()
     migrator.set_loader(config_loader)
     ```
 
@@ -99,6 +181,7 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
 3) ... or use your own loader - it should expose a single function `list(self)` which returns a similar-looking array:
 
     ```lua
+    local migrator = require('migrator-ee')
     local my_loader = {
         list = function(_)
             return {
@@ -115,6 +198,7 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
 4) Disable `cartridge.ddl` usage:
 
     ```lua
+    local migrator = require('migrator-ee')
     migrator.set_use_cartridge_ddl(false)
     ```
 
@@ -124,7 +208,7 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
 * Specify a sharding key for `cartridge.ddl` (if you use it) using `utils.register_sharding_key`:
   ```lua
       up = function()
-          local utils = require('migrator.utils')
+          local utils = require('migrator-ee.utils')
           local f = box.schema.create_space('my_sharded_space', {
               format = {
                   { name = 'key', type = 'string' },
@@ -149,13 +233,10 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
   Warning! It's not correct to specify 'bucket_id' as a 'key' parameter for register_sharding_key().
   The 'bucket_id' field is a place where the output of sharding function is saved to.
 
-* Before 0.6.0, each storage migration run time was limited to 3600 seconds (#66).
-  If your migrations run longer than this limit, it will result in timeout error.
-
-  Starting with 0.6.0, you may configure this value with clusterwide config to
+* You may configure timeout value with clusterwide config to
   allow longer migrations. Default is 3600 seconds.
   ```yaml
-  migrations:
+  migrations-ee:
     options:
       storage_timeout: 43200 # in seconds
   ```
@@ -163,7 +244,7 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
 * To run migrations code on a specific roles use `utils.check_roles_enabled`:
     ```lua
         up = function()
-            local utils = require('migrator.utils')
+            local utils = require('migrator-ee.utils')
             if utils.check_roles_enabled({'vshard-storage'}) then
                 local f = box.schema.create_space('my_sharded_space', {
                     format = {
@@ -192,25 +273,25 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
 
 * To get a list of applied migrations make a GET request to
   `http://<your_tarantool_ip>:<http_port>/migrations/applied` or call
-  `require('migrator').get_applied()` on any cluster instance. This method will return a list of
+  `require('migrator-ee').get_applied()` on any cluster instance. This method will return a list of
   applied migrations grouped by a leader node.
 
-## Upgrade from 0.* versions.
+## Upgrade from migrations CE 0.* versions.
 
 Applied migrations names storage method has been changed in `1.*` version: applied migrations list
 is stored on each cluster node separately in `_migrations` space. An additional step is required
 before applying migrations after update from `0.*`: call
 `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/move_migrations_state` or connect
-to any instance of cluster and call `require('migrator').move_migrations_state()`. This method
+to any instance of cluster and call `require('migrator-ee').move_migrations_state()`. This method
 does the following:
 
 - copies applied migrations names from cluster-wide configuration to the `_migrations` space on
   leader nodes.
 - if copying is succeeded on all leaders, removes the list from the cluster-wide configuration.
 
-## Rolling back to 0.* versions.
+## Rolling back to migrations CE 0.* versions.
 
-To perform a downgrade from `1.*` to `0.*` version do the following:
+To perform a downgrade from `1.*` to migrations CE `0.*` version do the following:
 
 - get a list of the applied migrations using the `get_applied` API.
 - set list of migrations in cluster-wide config:
@@ -223,6 +304,7 @@ To perform a downgrade from `1.*` to `0.*` version do the following:
 ```
 - remove `_migrations` space and `_migrations_id_seq` on all nodes if necessary.
 - perform downgrade of the `migrations`.
+
 
 ## Limitations
 - all migrations will be run on all cluster nodes (no partial migrations);

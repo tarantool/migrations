@@ -46,8 +46,8 @@ g.after_each(function() utils.cleanup(g) end)
 g.test_drop = function()
     for _, server in pairs(g.cluster.servers) do
         server.net_box:eval([[
-                require('migrator').set_loader(
-                    require('migrator.config-loader').new()
+                require('migrator-ee').set_loader(
+                    require('migrator-ee.config-loader').new()
                 )
             ]])
     end
@@ -113,8 +113,8 @@ end
 g.test_error_in_migrations = function()
     for _, server in pairs(g.cluster.servers) do
         server.net_box:eval([[
-                require('migrator').set_loader(
-                    require('migrator.config-loader').new()
+                require('migrator-ee').set_loader(
+                    require('migrator-ee.config-loader').new()
                 )
             ]])
     end
@@ -127,7 +127,7 @@ g.test_error_in_migrations = function()
         }
     ]] } })
 
-    local status, resp = g.cluster.main_server:eval("return pcall(function() require('migrator').up() end)")
+    local status, resp = g.cluster.main_server:eval("return pcall(function() require('migrator-ee').up() end)")
     t.assert_equals(status, false)
     t.assert_str_contains(tostring(resp), 'Oops')
     t.assert_str_contains(tostring(resp), 'Errors happened during migrations')
@@ -136,13 +136,13 @@ end
 g.test_inconsistent_migrations = function()
     for _, server in pairs(g.cluster.servers) do
         server.net_box:eval([[
-                require('migrator').set_loader({
+                require('migrator-ee').set_loader({
                     list = function() return {} end
                 })
             ]])
     end
     g.cluster.main_server.net_box:eval([[
-                require('migrator').set_loader({
+                require('migrator-ee').set_loader({
                     list = function(_)
                         return {
                             {
@@ -154,7 +154,7 @@ g.test_inconsistent_migrations = function()
                 })
             ]])
 
-    local status, resp = g.cluster.main_server:eval("return pcall(function() require('migrator').up() end)")
+    local status, resp = g.cluster.main_server:eval("return pcall(function() require('migrator-ee').up() end)")
     t.assert_equals(status, false)
     t.assert_str_contains(tostring(resp), 'Inconsistent migrations in cluster: '
     .. 'expected: [\"102_local\"],')
@@ -179,8 +179,8 @@ end
 g.test_up_on_replica = function()
     for _, server in pairs(g.cluster.servers) do
         server.net_box:eval([[
-                require('migrator').set_loader(
-                    require('migrator.config-loader').new()
+                require('migrator-ee').set_loader(
+                    require('migrator-ee.config-loader').new()
                 )
             ]])
     end
@@ -240,7 +240,7 @@ g.test_up_clusterwide_applied_migrations_exist = function(cg)
     ]])
     t.assert_not(err)
 
-    local status, resp = main:eval([[ return pcall(require('migrator').up) ]])
+    local status, resp = main:eval([[ return pcall(require('migrator-ee').up) ]])
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'A list of applied migrations is found in cluster config')
 end

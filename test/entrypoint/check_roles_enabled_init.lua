@@ -30,13 +30,13 @@ local ok, err = cartridge.cfg({
         'cartridge.roles.role2',
         'cartridge.roles.vshard-storage',
         'cartridge.roles.vshard-router',
-        'migrator',
+        'migrator-ee',
     },
     cluster_cookie = 'secret-cluster-cookie',
 }, {
     log_level = 5
 })
 
-require('migrator').set_loader(require('migrator.directory-loader').new('test/integration/migrations_check_roles_enabled'))
+require('migrator-ee').set_loader(require('migrator-ee.directory-loader').new('test/integration/migrations_check_roles_enabled'))
 
 assert(ok, tostring(err))

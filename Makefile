@@ -17,7 +17,7 @@ sdk: Makefile
 	rm tarantool-enterprise-bundle-$(BUNDLE_VERSION).tar.gz
 	mv tarantool-enterprise sdk
 
-.rocks: migrations-scm-1.rockspec
+.rocks: migrations-ee-scm-1.rockspec
 	$(shell) ./deps.sh
 
 lint:
@@ -29,9 +29,9 @@ test: lint
 	.rocks/bin/luacov . && grep -A999 '^Summary' tmp/luacov.report.out
 
 push-scm-1:
-	curl --fail -X PUT -F "rockspec=@migrations-scm-1.rockspec" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org
+	curl --fail -X PUT -F "rockspec=@migrations-ee-scm-1.rockspec" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org
 
 push-release:
 	cd release/ \
-    && curl --fail -X PUT -F "rockspec=@migrations-${COMMIT_TAG}-1.rockspec" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org \
-    && curl --fail -X PUT -F "rockspec=@migrations-${COMMIT_TAG}-1.all.rock" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org
+    && curl --fail -X PUT -F "rockspec=@migrations-ee-${COMMIT_TAG}-1.rockspec" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org \
+    && curl --fail -X PUT -F "rockspec=@migrations-ee-${COMMIT_TAG}-1.all.rock" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org
