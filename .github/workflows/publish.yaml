@@ -1,68 +1,75 @@
-name: Publish
+name: Publish artifacts
 
 on:
   push:
-    branches: [master]
-    tags: ['*']
+    tags:
+      - '*'
+
+env:
+  ROCK_NAME: "migrations-ee"
 
 jobs:
   version-check:
     # We need this job to run only on push with tag.
     if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
-
     runs-on: [self-hosted, Linux, x86_64, regular]
     container:
       image: ubuntu:22.04
-
     steps:
+      - name: Clone the module
+        uses: actions/checkout@v3
+
+      - name: Prepare env
+        uses: ./.github/actions/prepare-env
+        with:
+          tarantool-version: '2.11'
+
       - name: Check module version
         uses: tarantool/actions/check-module-version@master
         with:
           module-name: 'migrator-ee'
 
-  publish-tag:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: version-check
-
+  push-tagged-rock:
     runs-on: [self-hosted, Linux, x86_64, regular]
     container:
       image: ubuntu:22.04
-
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+    needs: version-check
     steps:
-      - uses: actions/checkout@v4
+      - name: Clone the module
+        uses: actions/checkout@v3
 
-      - name: Install basic tools
+      - name: Prepare env
+        uses: ./.github/actions/prepare-env
+        with:
+          tarantool-version: '2.11'
+
+      - name: Install aws
         run: |
           apt-get -y update
           apt-get --allow-releaseinfo-change update
-          apt-get -y install sudo git curl gcc make cmake unzip \
-          zip gawk cpio pkg-config build-essential ninja-build \
-          liblz4-dev autoconf automake libtool lsb-release rsync libunwind-dev \
+          apt-get -y install awscli
+        env:
+          DEBIAN_FRONTEND: noninteractive
         shell: bash
 
-      # tzdata package, which is tarantool dependency, asks a user for time zone configuration. The
-      # step below disables user interaction for this package.
-      - name: Set tzdata
+      # https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
+      - name: Set env
+        run: echo "GIT_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Create release rockspec
         run: |
-          ln -fs /usr/share/zoneinfo/Europe/Moscow /etc/localtime
-          echo "DEBIAN_FRONTEND=noninteractive" >> $GITHUB_ENV
-          echo "TZ=Europe/Moscow" >> $GITHUB_ENV
-        shell: bash
+          sed \
+            -e "s/branch = '.\+'/tag = '${GIT_TAG}'/g" \
+            -e "s/version = '.\+'/version = '${GIT_TAG}-1'/g" \
+            ${{ env.ROCK_NAME }}-scm-1.rockspec > ${{ env.ROCK_NAME }}-${GIT_TAG}-1.rockspec
 
-      # Workaround for setup tarantool action: disable dpkg filters, so all files will be installed.
-      - name: Disable default dpkg excludes
-        run: echo "" > /etc/dpkg/dpkg.cfg.d/excludes
-        shell: bash
+      - run: tt rocks make ${{ env.ROCK_NAME }}-${GIT_TAG}-1.rockspec
 
-      - name: Install tarantool
-        uses: tarantool/setup-tarantool@v3
-        with:
-          tarantool-version: '2.10'
+      - run: tt rocks pack ${{ env.ROCK_NAME }} ${GIT_TAG}
 
-      - run: echo $PWD/.rocks/bin >> $GITHUB_PATH
-
-      # Make a release
-      - run: echo TAG=${GITHUB_REF##*/} >> $GITHUB_ENV
-      - run: tarantoolctl rocks new_version --tag ${{ env.TAG }}
-      - run: tarantoolctl rocks install migrations-${{ env.TAG }}-1.rockspec
-      - run: tarantoolctl rocks pack migrations ${{ env.TAG }}
+      - name: Push release rock
+        run: aws --endpoint-url "https://hb.vkcs.cloud" s3 cp ./${{ env.ROCK_NAME }}-*.all.rock "s3://packages/rocks/"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
