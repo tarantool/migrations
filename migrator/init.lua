@@ -97,6 +97,27 @@ local function get_server_alias(instance_uri)
     return servers[1].alias
 end
 
+local function create_space_for_storing_applied_migrations()
+    box.schema.sequence.create('_migrations_id_seq', { if_not_exists = true })
+    box.schema.create_space('_migrations', {
+        format = {
+            {'id', type='unsigned', is_nullable=false},
+            {'name', type='string', is_nullable=false},
+        },
+        if_not_exists = true,
+    })
+    box.space._migrations:create_index('primary', {
+        sequence = '_migrations_id_seq',
+        if_not_exists = true,
+    })
+    -- Workaround for https://github.com/tarantool/ddl/issues/122
+    -- If index is created by ddl, sequence is not set. Check and update is required.
+    if box.space._migrations.index.primary ~= nil
+    and box.space._migrations.index.primary.sequence_id == nil then
+        box.space._migrations.index.primary:alter({sequence = '_migrations_id_seq'})
+    end
+end
+
 --- Run migrations on all nodes in the cluster
 -- Throws an exception in case of any problems
 -- @function up
@@ -290,29 +311,7 @@ local function move_migrations_state(current_server_only)
     return migrations_by_alias
 end
 
-local function init(opts)
-    -- Create space for storing applied migrations.
-    if opts.is_master then
-        box.schema.sequence.create('_migrations_id_seq', { if_not_exists = true })
-        box.schema.create_space('_migrations', {
-            format = {
-                {'id', type='unsigned', is_nullable=false},
-                {'name', type='string', is_nullable=false},
-            },
-            if_not_exists = true,
-        })
-        box.space._migrations:create_index('primary', {
-            sequence = '_migrations_id_seq',
-            if_not_exists = true,
-        })
-        -- Workaround for https://github.com/tarantool/ddl/issues/122
-        -- If index is created by ddl, sequence is not set. Check and update is required.
-        if box.space._migrations.index.primary ~= nil
-        and box.space._migrations.index.primary.sequence_id == nil then
-            box.space._migrations.index.primary:alter({sequence = '_migrations_id_seq'})
-        end
-    end
-
+local function init()
     local httpd = cartridge.service_get('httpd')
     if not httpd then return true end
 
@@ -381,10 +380,19 @@ local function validate_config(conf_new)
     return true
 end
 
+local function apply_config()
+    if not box.info().ro then
+        create_space_for_storing_applied_migrations()
+    end
+
+    return true
+end
+
 return {
     init = init,
 
     validate_config = validate_config,
+    apply_config = apply_config,
 
     permanent = true,
 
