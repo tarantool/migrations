@@ -28,18 +28,20 @@ To migrate from [migrations CE module](https://github.com/tarantool/migrations) 
     }
     ```
 
-2. Change requires in app code:
+2. Change requires in app and migrations code:
 
     from:
 
     ```lua
     local migrator = require('migrator')
+    local utils = require('migrator.utils')
     ```
 
     to:
 
     ```lua
     local migrator = require('migrator-ee')
+    local utils = require('migrator-ee.utils')
     ```
 
 3. Change name of cartridge role:
