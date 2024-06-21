@@ -2,7 +2,9 @@ version := scm-1
 
 .PHONY: all doc test schema install
 
-BUNDLE_VERSION=2.8.4-0-g47e6bd362-r508
+AWS_S3_ENDPOINT_URL= https://hb.vkcs.cloud
+DOWNLOAD_PATH = download.tarantool.io/enterprise/release/linux/x86_64/2.11
+TARANTOOL_VERSION = gc64-2.11.3-0-r636.linux.x86_64
 COMMIT_TAG = $(shell git describe)
 
 all: doc
@@ -12,9 +14,9 @@ centos-packages:
 	yum -y install epel-release && yum -y update && yum -y install wget git cmake make unzip
 
 sdk: Makefile
-	wget https://$(DOWNLOAD_TOKEN)@download.tarantool.io/enterprise/tarantool-enterprise-bundle-$(BUNDLE_VERSION).tar.gz
-	tar -xzf tarantool-enterprise-bundle-$(BUNDLE_VERSION).tar.gz
-	rm tarantool-enterprise-bundle-$(BUNDLE_VERSION).tar.gz
+	curl -O -L https://${DOWNLOAD_TOKEN}@${DOWNLOAD_PATH}/tarantool-enterprise-sdk-${TARANTOOL_VERSION}.tar.gz
+	tar -xzf tarantool-enterprise-sdk-$(TARANTOOL_VERSION).tar.gz
+	rm tarantool-enterprise-sdk-$(TARANTOOL_VERSION).tar.gz
 	mv tarantool-enterprise sdk
 
 .rocks: migrations-ee-scm-1.rockspec
@@ -27,11 +29,3 @@ test: lint
 	rm -f luacov*
 	.rocks/bin/luatest --verbose --coverage
 	.rocks/bin/luacov . && grep -A999 '^Summary' tmp/luacov.report.out
-
-push-scm-1:
-	curl --fail -X PUT -F "rockspec=@migrations-ee-scm-1.rockspec" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org
-
-push-release:
-	cd release/ \
-    && curl --fail -X PUT -F "rockspec=@migrations-ee-${COMMIT_TAG}-1.rockspec" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org \
-    && curl --fail -X PUT -F "rockspec=@migrations-ee-${COMMIT_TAG}-1.all.rock" https://${ROCKS_USERNAME}:${ROCKS_PASSWORD}@rocks.tarantool.org

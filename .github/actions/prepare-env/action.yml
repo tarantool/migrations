@@ -25,6 +25,7 @@ runs:
           apt-get -y install sudo git curl gcc make cmake unzip sudo \
           zip gawk cpio pkg-config build-essential ninja-build \
           liblz4-dev autoconf automake libtool lsb-release rsync libunwind-dev \
+          awscli
         shell: bash
 
       # Workaround for setup tarantool action: disable dpkg filters, so all files will be installed.

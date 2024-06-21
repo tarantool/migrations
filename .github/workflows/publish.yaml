@@ -24,10 +24,26 @@ jobs:
         with:
           tarantool-version: '2.11'
 
-      - name: Check module version
-        uses: tarantool/actions/check-module-version@master
-        with:
-          module-name: 'migrator-ee'
+      - name: Install requirements
+        run: make .rocks
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # tarantool/actions/check-module-version@master tries to install vshard-ee scm from net
+      # and fails (even though there is already vshard-ee 0.1.27)
+      - name: Check package version
+        run: |
+          REPO_TAG=${{ github.ref_name }}
+          MODULE_VERSION=$(tarantool -e "print(require('migrator-ee')._VERSION)")
+          echo "Module name is ${{ env.ROCK_NAME }}"
+          echo "Detected version from code is $MODULE_VERSION"
+          echo "Detected repo tag is $REPO_TAG"
+          if [ "$MODULE_VERSION" != "$REPO_TAG" ]; then
+            echo "::error::Version from code and the last repository tag are not equal"
+            echo "::notice::You may have forgotten to update the value in the version.lua file"
+            exit 1
+          fi
 
   push-tagged-rock:
     runs-on: [self-hosted, Linux, x86_64, regular]
@@ -44,14 +60,11 @@ jobs:
         with:
           tarantool-version: '2.11'
 
-      - name: Install aws
-        run: |
-          apt-get -y update
-          apt-get --allow-releaseinfo-change update
-          apt-get -y install awscli
+      - name: Install requirements
+        run: make .rocks
         env:
-          DEBIAN_FRONTEND: noninteractive
-        shell: bash
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # https://stackoverflow.com/questions/58177786/get-the-current-pushed-tag-in-github-actions
       - name: Set env

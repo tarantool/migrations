@@ -54,10 +54,10 @@ g.test_check = function(cg)
         return require('migrator-ee.utils').check_roles_enabled({'vshard-router', 'migrator-ee'})
     end))
     t.assert(cg.cluster:server('api-master'):exec(function()
-        return require('migrator-ee.utils').check_roles_enabled({'vshard-router', 'migrator-ee', 'ddl-manager'})
+        return require('migrator-ee.utils').check_roles_enabled({'vshard-router', 'migrator-ee', 'ddl-manager-ee'})
     end))
     t.assert_not(cg.cluster:server('api-master'):exec(function()
-        return require('migrator-ee.utils').check_roles_enabled({'vshard-storage', 'migrator-ee', 'ddl-manager'})
+        return require('migrator-ee.utils').check_roles_enabled({'vshard-storage', 'migrator-ee', 'ddl-manager-ee'})
     end))
 
     t.assert(cg.cluster:server('storage-role1-role2-master'):exec(function()
@@ -66,7 +66,7 @@ g.test_check = function(cg)
 
     t.assert(cg.cluster:server('storage-role1-role2-master'):exec(function()
         return require('migrator-ee.utils').check_roles_enabled(
-            {'vshard-storage', 'migrator-ee', 'ddl-manager', 'cartridge.roles.role1', 'cartridge.roles.role2', 'cartridge.roles.role1-dep'}
+            {'vshard-storage', 'migrator-ee', 'ddl-manager-ee', 'cartridge.roles.role1', 'cartridge.roles.role2', 'cartridge.roles.role1-dep'}
         )
     end))
 
@@ -80,7 +80,7 @@ g.test_check = function(cg)
 
     t.assert(cg.cluster:server('storage-role1-role2-replica'):exec(function()
         return require('migrator-ee.utils').check_roles_enabled(
-            {'vshard-storage', 'migrator-ee', 'ddl-manager', 'cartridge.roles.role1', 'cartridge.roles.role2', 'cartridge.roles.role1-dep'}
+            {'vshard-storage', 'migrator-ee', 'ddl-manager-ee', 'cartridge.roles.role1', 'cartridge.roles.role2', 'cartridge.roles.role1-dep'}
         )
     end))
 

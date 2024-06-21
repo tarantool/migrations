@@ -10,7 +10,7 @@ local json = require('json')
 local checks = require('checks')
 local fun = require('fun')
 
-local ddl = require('ddl')
+local ddl = require('ddl-ee')
 
 local module_name = 'migrator-ee'
 local vars = require('cartridge.vars').new(module_name)

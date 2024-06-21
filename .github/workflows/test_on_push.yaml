@@ -6,29 +6,26 @@ jobs:
   all:
     runs-on: [self-hosted, Linux, x86_64, regular]
     container:
-      image: centos:7
-
-    timeout-minutes: 10
-
-    env:
-      DOWNLOAD_TOKEN: ${{ secrets.SDK_DOWNLOAD_TOKEN }}
+      image: ubuntu:22.04
 
     steps:
-      - name: Install centos packages
-        run: |
-          yum -y install epel-release https://repo.ius.io/ius-release-el7.rpm
-          yum -y update
-          yum -y install wget git cmake make unzip gcc gcc-c++
+      - name: Clone the module
+        uses: actions/checkout@v3
+
+      - name: Prepare env
+        uses: ./.github/actions/prepare-env
+        with:
+          tarantool-version: '2.11'
 
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install sdk
-        run: make sdk
-
       - name: Install rocks
         shell: bash
-        run: source sdk/env.sh && make .rocks
+        run: make .rocks
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Run tests
         run: make test

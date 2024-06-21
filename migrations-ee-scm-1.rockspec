@@ -9,7 +9,8 @@ dependencies = {
     'tarantool',
     'lua >= 5.1',
     'checks >= 3.0.1-1, <4.0.0',
-    'cartridge >= 2.0.1-1, <3.0.0',
+    'cartridge >= 2.12.1-1, <3.0.0',
+    'ddl-ee',
 }
 build = {
     type = 'make',

@@ -94,7 +94,7 @@ local function parse_module_version(str)
 end
 
 local function is_ddl_supports_sequences()
-    local ddl = require('ddl')
+    local ddl = require('ddl-ee')
 
     if ddl._VERSION == nil then
         return false
