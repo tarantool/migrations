@@ -2,7 +2,7 @@ local t = require("luatest")
 local g = t.group("config-loader")
 local fun = require("fun")
 
-local loader = require("migrator-ee.config-loader")
+local loader = require("migrator.config-loader")
 
 g.test___must_sort_sorts = function()
     local a = {{name = '002_second.lua'}, {name = '003_third.lua'}, {name = '001_first.lua'}}

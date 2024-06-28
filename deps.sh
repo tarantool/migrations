@@ -16,7 +16,7 @@ ${TTCTL} rocks install luacov 0.13.0
 ${TTCTL} rocks install luacheck 0.26.0
 
 VSHARD_EE_VERSION="${VSHARD_EE_VERSION:-0.1.27}"
-DDL_EE_VERSION="${DDL_EE_VERSION:-1.7.1}"
+DDL_EE_VERSION="${DDL_EE_VERSION:-1.8.0}"
 CARTRIDGE_VERSION="${CARTRIDGE_VERSION:-2.12.1}"
 
 # Workaround until SDK with ee modules is released.

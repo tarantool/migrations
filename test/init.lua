@@ -8,14 +8,14 @@ local ok, err = cartridge.cfg({
     roles = {
         'cartridge.roles.vshard-storage',
         'cartridge.roles.vshard-router',
-        'migrator-ee',
+        'migrator',
     },
     cluster_cookie = 'migrations-test-cluster-cookie',
     roles_reload_allowed = true
 }, {
     log_level = 6
 })
-require('migrator-ee').set_loader(require('migrator-ee.directory-loader').new('test/integration/migrations'))
+require('migrator').set_loader(require('migrator.directory-loader').new('test/integration/migrations'))
 
 require('json').cfg{encode_use_tostring = true,}
 

@@ -74,12 +74,12 @@ g.test_gh_65_migrations_in_new_replicaset = function(cg)
     local main = cg.cluster.main_server
 
     main:eval([[
-        require('cartridge').config_patch_clusterwide({['migrations-ee'] = {options = {storage_timeout = 3.0}}})
+        require('cartridge').config_patch_clusterwide({['migrations'] = {options = {storage_timeout = 3.0}}})
     ]])
 
     local set_loader = [[
-        require('migrator-ee').set_loader(
-            require('migrator-ee.directory-loader').new('test/integration/migrations-gh-65')
+        require('migrator').set_loader(
+            require('migrator.directory-loader').new('test/integration/migrations-gh-65')
         )
     ]]
 
@@ -87,7 +87,7 @@ g.test_gh_65_migrations_in_new_replicaset = function(cg)
         server.net_box:eval(set_loader)
     end
 
-    local status, resp = main:eval("return pcall(require('migrator-ee').up)")
+    local status, resp = main:eval("return pcall(require('migrator').up)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ["router"] = {"001_create_func.lua"},
@@ -111,7 +111,7 @@ g.test_gh_65_migrations_in_new_replicaset = function(cg)
         ]]))
     end)
 
-    status, resp = main:eval("return pcall(require('migrator-ee').up)")
+    status, resp = main:eval("return pcall(require('migrator').up)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ["storage-2-master"] = {"001_create_func.lua"},

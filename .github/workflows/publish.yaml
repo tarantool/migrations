@@ -35,7 +35,7 @@ jobs:
       - name: Check package version
         run: |
           REPO_TAG=${{ github.ref_name }}
-          MODULE_VERSION=$(tarantool -e "print(require('migrator-ee')._VERSION)")
+          MODULE_VERSION=$(tarantool -e "print(require('migrator')._VERSION)")
           echo "Module name is ${{ env.ROCK_NAME }}"
           echo "Detected version from code is $MODULE_VERSION"
           echo "Detected repo tag is $REPO_TAG"

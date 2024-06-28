@@ -73,7 +73,7 @@ g.after_each(function() utils.cleanup(g) end)
 g.test_get_migrations_state = function(cg)
     local main = cg.cluster.main_server
 
-    local status, resp = main:eval("return pcall(require('migrator-ee').up)")
+    local status, resp = main:eval("return pcall(require('migrator').up)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ['router'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
@@ -81,7 +81,7 @@ g.test_get_migrations_state = function(cg)
         ['storage-2-master'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
     })
 
-    status, resp = main:eval("return pcall(require('migrator-ee').get_applied)")
+    status, resp = main:eval("return pcall(require('migrator').get_applied)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ['router'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },

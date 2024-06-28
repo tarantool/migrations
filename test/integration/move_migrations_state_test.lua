@@ -83,12 +83,12 @@ g.test_move_migrations_state = function(cg)
     ]])
 
     -- `up` call does not work due to non-empty cluster-wide migrations list.
-    local status, resp = main:eval("return pcall(require('migrator-ee').up)")
+    local status, resp = main:eval("return pcall(require('migrator').up)")
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'Cannot perform an upgrade.')
 
     -- Move migrations.
-    status, resp = main:eval("return pcall(require('migrator-ee').move_migrations_state)")
+    status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
     t.assert(status, tostring(resp))
     t.assert_items_equals(resp, {
         ["router"] = {"01_first.lua", "02_second.lua"},
@@ -108,7 +108,7 @@ g.test_move_migrations_state = function(cg)
     ]]))
 
     -- `up` should perform 03 migration only.
-    status, resp = main:eval("return pcall(require('migrator-ee').up)")
+    status, resp = main:eval("return pcall(require('migrator').up)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ['router'] = { '03_sharded.lua' },
@@ -160,7 +160,7 @@ g.test_move_migrations_call_on_replica = function(cg)
 
     -- Move migrations.
     local status, resp = cg.cluster:server('storage-1-replica'):eval(
-        "return pcall(require('migrator-ee').move_migrations_state)")
+        "return pcall(require('migrator').move_migrations_state)")
     t.assert(status, tostring(resp))
     t.assert_items_equals(resp, {
         ["router"] = {"01_first.lua", "02_second.lua"},
@@ -192,7 +192,7 @@ g.test_move_empty_migrations_state = function(cg)
     ]])
 
     -- Move migrations. No config - no errors.
-    local status, resp = main:eval("return pcall(require('migrator-ee').move_migrations_state)")
+    local status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
     t.assert(status, tostring(resp))
     t.assert_items_equals(resp, {})
 end
@@ -202,12 +202,12 @@ g.test_move_migrations_consistency_check = function(cg)
 
     local status, resp = main:eval([[
         return pcall(require('cartridge').config_patch_clusterwide,
-            {['migrations-ee'] = {applied = {}}})
+            {['migrations'] = {applied = {}}})
     ]])
     t.assert(status, tostring(resp))
 
     -- Apply all migrations.
-    status, resp = main:eval("return pcall(require('migrator-ee').up)")
+    status, resp = main:eval("return pcall(require('migrator').up)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ['router'] = { '01_first.lua', '02_second.lua', '03_sharded.lua' },
@@ -222,7 +222,7 @@ g.test_move_migrations_consistency_check = function(cg)
     ]])
 
     -- Migrations in config are consistent with local. No error.
-    status, resp = main:eval("return pcall(require('migrator-ee').move_migrations_state)")
+    status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
     t.assert(status, tostring(resp))
     t.assert_items_equals(resp, {
         ['router'] = {},
@@ -236,13 +236,13 @@ g.test_move_migrations_consistency_check = function(cg)
             migrations = {applied = { '01_first.lua', '03_sharded.lua' }}
         })
     ]])
-    status, resp = main:eval("return pcall(require('migrator-ee').move_migrations_state)")
+    status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'Inconsistency between cluster-wide and local applied migrations')
 
     -- Make sure cluster-wide migrations state is still there.
     t.assert(main:eval([[
-        return require('cartridge.confapplier').get_readonly('migrations-ee').applied ~= nil
+        return require('cartridge.confapplier').get_readonly('migrations').applied ~= nil
     ]]))
 end
 
@@ -251,7 +251,7 @@ g.test_move_migrations_append_to_existing_local = function(cg)
 
     for _, server in pairs(cg.cluster.servers) do
         server:eval([[
-            require('migrator-ee').set_loader({
+            require('migrator').set_loader({
                 list = function()
                     return {
                         {
@@ -264,7 +264,7 @@ g.test_move_migrations_append_to_existing_local = function(cg)
         ]])
     end
 
-    local status, resp = main:eval("return pcall(require('migrator-ee').up)")
+    local status, resp = main:eval("return pcall(require('migrator').up)")
     t.assert(status, tostring(resp))
     t.assert_equals(resp, {
         ['router'] = { '01.lua' },
@@ -280,7 +280,7 @@ g.test_move_migrations_append_to_existing_local = function(cg)
     ]])
 
     -- Only new missing applied migrations is copied to local storage.
-    status, resp = main:eval("return pcall(require('migrator-ee').move_migrations_state)")
+    status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
     t.assert(status, tostring(resp))
     t.assert_items_equals(resp, {
         ['router'] = { '02.lua' },

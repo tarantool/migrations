@@ -17,11 +17,11 @@ build = {
 	build_target = 'all',
     install = {
         lua = {
-            ['migrator-ee'] = 'migrator-ee/init.lua',
-            ['migrator-ee.version'] = 'migrator-ee/version.lua',
-            ['migrator-ee.utils'] = 'migrator-ee/utils.lua',
-            ['migrator-ee.directory-loader'] = 'migrator-ee/directory-loader.lua',
-            ['migrator-ee.config-loader'] = 'migrator-ee/config-loader.lua',
+            ['migrator'] = 'migrator/init.lua',
+            ['migrator.version'] = 'migrator/version.lua',
+            ['migrator.utils'] = 'migrator/utils.lua',
+            ['migrator.directory-loader'] = 'migrator/directory-loader.lua',
+            ['migrator.config-loader'] = 'migrator/config-loader.lua',
         },
     },
     build_variables = {

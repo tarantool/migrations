@@ -19,7 +19,7 @@ g.before_all(function()
             {
                 alias = 'storage-1',
                 uuid = cartridge_helpers.uuid('a'),
-                roles = { 'migrator-ee' },
+                roles = { 'migrator' },
                 servers = { { instance_uuid = cartridge_helpers.uuid('a', 1) } },
             },
         },
@@ -37,8 +37,8 @@ g.after_each(function() utils.cleanup(g) end)
 g.test_upgrade_basic = function(cg)
     local main = cg.cluster.main_server
     main:eval([[
-        require('migrator-ee').set_loader(
-            require('migrator-ee.config-loader').new())
+        require('migrator').set_loader(
+            require('migrator.config-loader').new())
     ]])
     utils.set_sections(g, {
         {
@@ -67,7 +67,7 @@ g.test_upgrade_basic = function(cg)
     })
 
 
-    local result = main:eval([[ return require('migrator-ee').upgrade() ]])
+    local result = main:eval([[ return require('migrator').upgrade() ]])
     t.assert_equals(result.applied_now, {'01_script.lua', '02_script.lua'})
     t.assert_equals(result.applied, {'01_script.lua', '02_script.lua'})
 
@@ -81,7 +81,7 @@ g.test_upgrade_basic = function(cg)
             content = [[ return { up = function() box.space.test:insert{2} end } ]]
         },
     })
-    result = main:eval([[ return require('migrator-ee').upgrade() ]])
+    result = main:eval([[ return require('migrator').upgrade() ]])
     t.assert_equals(result.applied_now, { '03_script.lua' })
     t.assert_equals(result.applied, { '01_script.lua', '02_script.lua', '03_script.lua' })
     t.assert(main:eval([[ return box.space.test:get(1) ]]))
@@ -100,7 +100,7 @@ g.test_upgrade_clusterwide_applied_migrations_exist = function(cg)
     ]])
     t.assert_not(err)
 
-    local status, resp = main:eval([[ return pcall(require('migrator-ee').upgrade) ]])
+    local status, resp = main:eval([[ return pcall(require('migrator').upgrade) ]])
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'A list of applied migrations is found in cluster config')
 end

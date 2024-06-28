@@ -10,14 +10,14 @@ local json = require('json')
 local checks = require('checks')
 local fun = require('fun')
 
-local ddl = require('ddl-ee')
+local ddl = require('ddl')
 
-local module_name = 'migrator-ee'
+local module_name = 'migrator'
 local vars = require('cartridge.vars').new(module_name)
 local migrator_error = require('errors').new_class(module_name)
 
-local utils = require('migrator-ee.utils')
-vars:new('loader', require('migrator-ee.directory-loader').new())
+local utils = require('migrator.utils')
+vars:new('loader', require('migrator.directory-loader').new())
 vars:new('use_cartridge_ddl', true)
 
 
@@ -43,7 +43,7 @@ end
 -- see https://github.com/tarantool/migrations/issues/56 for details
 local function fetch_schema()
     if vars.use_cartridge_ddl ~= true then return nil end
-    local schema, err = rpc.call('migrator-ee', 'get_schema', nil, {prefer_local = true, leader_only = true})
+    local schema, err = rpc.call('migrator', 'get_schema', nil, {prefer_local = true, leader_only = true})
         if err ~= nil then
         log.error(err)
         error(err)
@@ -54,7 +54,7 @@ end
 local DEFAULT_STORAGE_TIMEOUT = 3600
 
 local function get_storage_timeout()
-    local config = confapplier.get_readonly('migrations-ee') or {}
+    local config = confapplier.get_readonly('migrations') or {}
     local options = config['options'] or {}
     if options.storage_timeout ~= nil then
         return options.storage_timeout
@@ -132,13 +132,13 @@ local function up()
     local result = {}
     local all_migrations = {}
     local fibers = {}
-    for _, instance_uri in pairs(rpc.get_candidates('migrator-ee', { leader_only = true })) do
+    for _, instance_uri in pairs(rpc.get_candidates('migrator', { leader_only = true })) do
         log.info('Preparing to run migrations on %s', instance_uri)
         local f = fiber.new(function()
             local conn = pool.connect(instance_uri)
             local applied_migrations, err = conn:call(
                 '__cluster_rpc_call_local',
-                { 'migrator-ee', 'upgrade' },
+                { 'migrator', 'upgrade' },
                 {timeout = get_storage_timeout()})
             if err ~= nil then
                 log.warn('Cannot apply migrations on %s: %s', instance_uri, json.encode(err))
@@ -210,10 +210,10 @@ end
 -- @function get_applied
 -- @return table of applied migrations in cluster grouped by leader aliases.
 local function get_applied()
-    local leaders = rpc.get_candidates('migrator-ee',{ leader_only = true })
+    local leaders = rpc.get_candidates('migrator',{ leader_only = true })
     log.info('Preparing getting applied migrations from %s', json.encode(leaders))
     local result, errmap = pool.map_call('_G.__cluster_rpc_call_local',
-        {'migrator-ee', 'get_applied_local'}, {
+        {'migrator', 'get_applied_local'}, {
             uri_list = leaders,
             timeout = get_storage_timeout(),
         })
@@ -272,10 +272,10 @@ local function move_migrations_state(current_server_only)
     end
 
     -- Copy state on all leaders.
-    local leaders = rpc.get_candidates('migrator-ee',{leader_only = true })
+    local leaders = rpc.get_candidates('migrator',{leader_only = true })
     log.info('Preparing copying migrations on %s', json.encode(leaders))
     local result, errmap = pool.map_call('_G.__cluster_rpc_call_local',
-        {'migrator-ee', 'move_migrations_state', {true}}, {
+        {'migrator', 'move_migrations_state', {true}}, {
             uri_list = leaders,
             timeout = get_storage_timeout(),
         })
@@ -365,7 +365,7 @@ local function set_use_cartridge_ddl(use_cartridge_ddl)
 end
 
 local function validate_config(conf_new)
-    local migrations_conf = conf_new['migrations-ee'] or {}
+    local migrations_conf = conf_new['migrations'] or {}
     local options = migrations_conf['options'] or {}
 
     if options.storage_timeout ~= nil then
@@ -408,5 +408,5 @@ return {
     get_applied = get_applied,
     get_applied_local = get_applied_local,
 
-    _VERSION = require('migrator-ee.version'),
+    _VERSION = require('migrator.version'),
 }

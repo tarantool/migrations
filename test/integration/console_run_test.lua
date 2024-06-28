@@ -56,8 +56,8 @@ local cases = {
     with_config_loader = function()
         for _, server in pairs(g.cluster.servers) do
             server.net_box:eval([[
-                require('migrator-ee').set_loader(
-                    require('migrator-ee.config-loader').new()
+                require('migrator').set_loader(
+                    require('migrator.config-loader').new()
                 )
             ]])
         end
@@ -73,8 +73,8 @@ local cases = {
     with_directory_loader = function()
         for _, server in pairs(g.cluster.servers) do
             server.net_box:eval([[
-                require('migrator-ee').set_loader(
-                    require('migrator-ee.directory-loader').new('test/integration/migrations')
+                require('migrator').set_loader(
+                    require('migrator.directory-loader').new('test/integration/migrations')
                 )
             ]])
         end
@@ -88,7 +88,7 @@ for k, configure_func in pairs(cases) do
         for _, server in pairs(g.cluster.servers) do
             t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
         end
-        local result = g.cluster.main_server.net_box:eval('return require("migrator-ee").up()')
+        local result = g.cluster.main_server.net_box:eval('return require("migrator").up()')
         t.assert_equals(result, {
             ["api-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"},
             ["storage-1-1"] = {"01_first.lua", "02_second.lua", "03_sharded.lua"},

@@ -27,7 +27,7 @@ g.test_check = function()
         end
     }
 
-    local utils = require('migrator-ee.utils')
+    local utils = require('migrator.utils')
 
     t.assert(utils.check_roles_enabled({'crud-router', 'my_super_role'}))
     t.assert(utils.check_roles_enabled({'space-explorer', 'vshard-router', 'crud-router', 'my_super_role'}))
