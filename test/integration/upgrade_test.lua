@@ -15,8 +15,6 @@ g.before_all(function()
         server_command = shared.server_command,
         datadir = datadir,
         use_vshard = false,
-        base_advertise_port = 13400,
-        base_http_port = 8090,
         replicasets = {
             {
                 alias = 'storage-1',
@@ -106,4 +104,3 @@ g.test_upgrade_clusterwide_applied_migrations_exist = function(cg)
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'A list of applied migrations is found in cluster config')
 end
-

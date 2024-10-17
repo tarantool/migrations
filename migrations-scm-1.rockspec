@@ -9,7 +9,7 @@ dependencies = {
     'tarantool',
     'lua >= 5.1',
     'checks >= 3.0.1-1, <4.0.0',
-    'cartridge >= 2.0.1-1, <3.0.0',
+    'cartridge >= 2.12.1-1, <3.0.0',
 }
 build = {
     type = 'make',
@@ -21,6 +21,7 @@ build = {
             ['migrator.utils'] = 'migrator/utils.lua',
             ['migrator.directory-loader'] = 'migrator/directory-loader.lua',
             ['migrator.config-loader'] = 'migrator/config-loader.lua',
+            ['migrator.changing-applied-migrations'] = 'migrator/changing-applied-migrations.lua',
         },
     },
     build_variables = {

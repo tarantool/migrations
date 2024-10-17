@@ -13,12 +13,11 @@ g.before_all(function()
         server_command = shared.server_command,
         datadir = datadir,
         use_vshard = true,
-        base_advertise_port = 10600,
         replicasets = {
             {
                 alias = 'router',
                 uuid = cartridge_helpers.uuid('a'),
-                roles = { 'vshard-router', 'migrator' },
+                roles = { 'vshard-router' },
                 servers = { {
                     alias = 'router',
                     instance_uuid = cartridge_helpers.uuid('a', 1)
@@ -27,7 +26,7 @@ g.before_all(function()
             {
                 alias = 'storage-1',
                 uuid = cartridge_helpers.uuid('b'),
-                roles = { 'vshard-storage', 'migrator' },
+                roles = { 'vshard-storage' },
                 servers = {
                     {
                         alias = 'storage-1-master',
@@ -44,7 +43,7 @@ g.before_all(function()
             {
                 alias = 'storage-2',
                 uuid = cartridge_helpers.uuid('c'),
-                roles = { 'vshard-storage', 'migrator' },
+                roles = { 'vshard-storage' },
                 servers = {
                     {
                         alias = 'storage-2-master',
@@ -203,7 +202,7 @@ g.test_move_migrations_consistency_check = function(cg)
 
     local status, resp = main:eval([[
         return pcall(require('cartridge').config_patch_clusterwide,
-            {migrations = {applied = {}}})
+            {['migrations'] = {applied = {}}})
     ]])
     t.assert(status, tostring(resp))
 
@@ -260,7 +259,12 @@ g.test_move_migrations_append_to_existing_local = function(cg)
                             up = function() return true end
                         },
                     }
-                end
+                end,
+                hashes_by_name = function()
+                    return {
+                        ['01.lua'] = 'hashXXX',
+                    }
+                end,
             })
         ]])
     end
@@ -280,9 +284,34 @@ g.test_move_migrations_append_to_existing_local = function(cg)
         })
     ]])
 
+    for _, server in pairs(cg.cluster.servers) do
+        server:eval([[
+            require('migrator').set_loader({
+                list = function()
+                    return {
+                        {
+                            name = '01.lua',
+                            up = function() return true end
+                        },
+                        {
+                            name = '02.lua',
+                            up = function() return true end
+                        },
+                    }
+                end,
+                hashes_by_name = function()
+                    return {
+                        ['01.lua'] = 'hashXXX',
+                        ['02.lua'] = 'hashYYY',
+                    }
+                end,
+            })
+        ]])
+    end
+
     -- Only new missing applied migrations is copied to local storage.
     status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
-    t.assert(status, tostring(resp))
+    t.assert(status, tostring(require('json').encode(resp)))
     t.assert_items_equals(resp, {
         ['router'] = { '02.lua' },
         ['storage-1-master'] = { '02.lua' },
