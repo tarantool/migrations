@@ -84,7 +84,6 @@ local cases = {
 for k, configure_func in pairs(cases) do
     g['test_basic_' .. k] = function()
         configure_func()
-
         for _, server in pairs(g.cluster.servers) do
             t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
         end
@@ -120,7 +119,8 @@ for k, configure_func in pairs(cases) do
                         engine = "memtx",
                         format = {
                             {is_nullable = false, name = "id", type = "unsigned"},
-                            {is_nullable = false, name = "name", type = "string"}
+                            {is_nullable = false, name = "name", type = "string"},
+                            {is_nullable = true, name = "hash", type = "string"},
                         },
                         indexes = {
                             {
@@ -137,19 +137,19 @@ for k, configure_func in pairs(cases) do
                     first = {
                         engine = "memtx",
                         format = {
-                            { is_nullable = false, name = "key", type = "string" },
-                            { is_nullable = true, name = "value", type = "string" },
+                            {is_nullable = false, name = "key", type = "string"},
+                            {is_nullable = true, name = "value", type = "string"},
                         },
                         indexes = {
                             {
                                 name = "primary",
-                                parts = { { is_nullable = false, path = "key", type = "string" } },
+                                parts = {{is_nullable = false, path = "key", type = "string"}},
                                 type = "TREE",
                                 unique = true,
                             },
                             {
                                 name = "value",
-                                parts = { { is_nullable = true, path = "value", type = "string" } },
+                                parts = {{is_nullable = true, path = "value", type = "string"}},
                                 type = "TREE",
                                 unique = false,
                             },
@@ -160,26 +160,26 @@ for k, configure_func in pairs(cases) do
                     sharded = {
                         engine = "memtx",
                         format = {
-                            { is_nullable = false, name = "key", type = "string" },
-                            { is_nullable = false, name = "bucket_id", type = "unsigned" },
-                            { is_nullable = true, name = "value", type = "any" },
+                            {is_nullable = false, name = "key", type = "string"},
+                            {is_nullable = false, name = "bucket_id", type = "unsigned"},
+                            {is_nullable = true, name = "value", type = "any"},
                         },
                         indexes = {
                             {
                                 name = "primary",
-                                parts = { { is_nullable = false, path = "key", type = "string" } },
+                                parts = {{is_nullable = false, path = "key", type = "string"}},
                                 type = "TREE",
                                 unique = true,
                             },
                             {
                                 name = "bucket_id",
-                                parts = { { is_nullable = false, path = "bucket_id", type = "unsigned" } },
+                                parts = {{is_nullable = false, path = "bucket_id", type = "unsigned"}},
                                 type = "TREE",
                                 unique = false,
                             },
                         },
                         is_local = false,
-                        sharding_key = { "key" },
+                        sharding_key = {"key"},
                         temporary = false,
                     },
                 },
@@ -193,7 +193,7 @@ for k, configure_func in pairs(cases) do
                         step = 1,
                     },
                 },
-            },
+            }
         }
 
         expected_schema = utils.downgrade_ddl_schema_if_required(expected_schema)

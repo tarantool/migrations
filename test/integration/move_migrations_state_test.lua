@@ -259,7 +259,12 @@ g.test_move_migrations_append_to_existing_local = function(cg)
                             up = function() return true end
                         },
                     }
-                end
+                end,
+                hashes_by_name = function()
+                    return {
+                        ['01.lua'] = 'hashXXX',
+                    }
+                end,
             })
         ]])
     end
@@ -279,9 +284,34 @@ g.test_move_migrations_append_to_existing_local = function(cg)
         })
     ]])
 
+    for _, server in pairs(cg.cluster.servers) do
+        server:eval([[
+            require('migrator').set_loader({
+                list = function()
+                    return {
+                        {
+                            name = '01.lua',
+                            up = function() return true end
+                        },
+                        {
+                            name = '02.lua',
+                            up = function() return true end
+                        },
+                    }
+                end,
+                hashes_by_name = function()
+                    return {
+                        ['01.lua'] = 'hashXXX',
+                        ['02.lua'] = 'hashYYY',
+                    }
+                end,
+            })
+        ]])
+    end
+
     -- Only new missing applied migrations is copied to local storage.
     status, resp = main:eval("return pcall(require('migrator').move_migrations_state)")
-    t.assert(status, tostring(resp))
+    t.assert(status, tostring(require('json').encode(resp)))
     t.assert_items_equals(resp, {
         ['router'] = { '02.lua' },
         ['storage-1-master'] = { '02.lua' },

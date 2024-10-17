@@ -1,4 +1,5 @@
 local fio = require('fio')
+local digest = require('digest')
 local checks = require('checks')
 local log = require('log') -- luacheck: ignore
 
@@ -29,6 +30,29 @@ function Loader:list()
             log.warn('Cannot load %s: %s', v, err)
         end
     end
+    return result
+end
+
+function Loader:hashes_by_name()
+    local result = {}
+
+    local search_folder = fio.pathjoin(package.searchroot(), self.dir_name)
+    if not fio.path.is_dir(search_folder) then error(('Path %s is not valid'):format(search_folder)) end
+    local files = fio.listdir(search_folder) or {}
+    for _, file_name in ipairs(files) do
+        local fh, err_open = fio.open(fio.pathjoin(search_folder, file_name), {'O_RDONLY'})
+        if err_open ~= nil then
+            log.warn('Cannot open file %s: %s', file_name, err_open)
+        else
+            local lua_code, err_read = fh:read()
+            if err_read ~= nil then
+                log.warn('Cannot read file %s: %s', file_name, err_read)
+            else
+                result[file_name] = digest.md5(lua_code)
+            end
+        end
+    end
+
     return result
 end
 

@@ -136,10 +136,11 @@ end
 g.test_inconsistent_migrations = function()
     for _, server in pairs(g.cluster.servers) do
         server.net_box:eval([[
-                require('migrator').set_loader({
-                    list = function() return {} end
-                })
-            ]])
+            require('migrator').set_loader({
+                list = function(_) return {} end,
+                hashes_by_name = function(_) return {} end
+            })
+        ]])
     end
     g.cluster.main_server.net_box:eval([[
                 require('migrator').set_loader({
@@ -149,6 +150,11 @@ g.test_inconsistent_migrations = function()
                                 name = '102_local',
                                 up = function() return true end
                             },
+                        }
+                    end,
+                    hashes_by_name = function(_)
+                        return {
+                            ['102_local'] = 'hashXXX',
                         }
                     end
                 })

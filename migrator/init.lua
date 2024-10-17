@@ -17,6 +17,8 @@ local vars = require('cartridge.vars').new(module_name)
 local migrator_error = require('errors').new_class(module_name)
 
 local utils = require('migrator.utils')
+local changing_applied_migrations = require('migrator.changing-applied-migrations')
+
 vars:new('loader', require('migrator.directory-loader').new())
 vars:new('use_cartridge_ddl', true)
 
@@ -45,9 +47,9 @@ local function fetch_schema()
     if vars.use_cartridge_ddl ~= true then return nil end
     local schema, err = rpc.call('migrator', 'get_schema', nil, {prefer_local = true, leader_only = true})
         if err ~= nil then
-        log.error(err)
-        error(err)
-    end
+            log.error(err)
+            error(err)
+        end
     return schema
 end
 
@@ -100,12 +102,15 @@ end
 local function create_space_for_storing_applied_migrations()
     box.schema.sequence.create('_migrations_id_seq', { if_not_exists = true })
     box.schema.create_space('_migrations', {
-        format = {
-            {'id', type='unsigned', is_nullable=false},
-            {'name', type='string', is_nullable=false},
-        },
         if_not_exists = true,
     })
+
+    box.space._migrations:format({
+        {'id', type='unsigned', is_nullable=false},
+        {'name', type='string', is_nullable=false},
+        {'hash', type='string', is_nullable=true},
+    })
+
     box.space._migrations:create_index('primary', {
         sequence = '_migrations_id_seq',
         if_not_exists = true,
@@ -116,6 +121,8 @@ local function create_space_for_storing_applied_migrations()
     and box.space._migrations.index.primary.sequence_id == nil then
         box.space._migrations.index.primary:alter({sequence = '_migrations_id_seq'})
     end
+
+    box.atomic(changing_applied_migrations.create_hashes_for_migrations)
 end
 
 --- Run migrations on all nodes in the cluster
@@ -237,6 +244,7 @@ end
 local function append_migrations_to_local_space(migrations)
     local copied_migrations = {}
     local local_migrations = get_applied_local()
+    local hashes_by_name = vars.loader:hashes_by_name()
     for i, migration in ipairs(migrations) do
         if i <= #local_migrations then
             if local_migrations[i] ~= migration then
@@ -247,7 +255,7 @@ local function append_migrations_to_local_space(migrations)
                 error(err_msg)
             end
         else
-            box.space._migrations:insert{box.NULL, migration}
+            box.space._migrations:insert{box.NULL, migration, hashes_by_name[migration]}
             table.insert(copied_migrations, migration)
         end
     end
@@ -336,16 +344,18 @@ end
 
 local function upgrade()
     check_no_migrations_in_config()
+    changing_applied_migrations.check_applied_migrations_not_changed()
 
     local migrations = {applied_now = {}, applied = get_applied_local()}
     local to_apply, migrations_map = get_diff(migrations.applied)
+    local hashes_by_name = vars.loader:hashes_by_name()
     for _, name in ipairs(to_apply) do
         local _, err = migrator_error:pcall(migrations_map[name].up)
         if err ~= nil then
             log.error('Migration %s not applied: %s', name, err)
             error(err)
         end
-        box.space._migrations:insert{box.NULL, name}
+        box.space._migrations:insert{box.NULL, name, hashes_by_name[name]}
         table.insert(migrations.applied_now, name)
         table.insert(migrations.applied, name)
         log.verbose('Migration %s applied successfully', name)
@@ -377,12 +387,42 @@ local function validate_config(conf_new)
             "'options.storage_timeout' must be a non-negative number")
     end
 
+    if options.is_applied_migrations_writable ~= nil then
+        assert(
+            type(options.is_applied_migrations_writable) == 'boolean',
+            ("'options.is_applied_migrations_writable' must be a boolean, %s provided"):format(type(options.is_applied_migrations_writable))
+        )
+    end
+
+    -- box.cfg was not called yet
+    if type(box.cfg) == 'table' then
+        changing_applied_migrations.check_applied_migrations_not_changed(conf_new)
+    end
     return true
 end
 
-local function apply_config()
+local function should_update_hashes(conf_new, conf_old)
+    -- if is_applied_migrations_writable changes from true to false we should update_applied_migrations_hashes
+    -- it will allow to pass check_applied_migrations_not_changed, if user changed them.
+    local new_is_writable = ((conf_new['migrations'] or {}).options or {}).is_applied_migrations_writable
+    local old_is_writable =
+        ((conf_old['migrations'] or {}).options or {}).is_applied_migrations_writable or
+        changing_applied_migrations.DEFAULT_IS_APPLIED_MIGRATIONS_WRITABLE
+
+    if new_is_writable == false and old_is_writable == true then
+        return true
+    end
+    return false
+end
+
+local function apply_config(conf_new, conf_old)
     if not box.info().ro then
         create_space_for_storing_applied_migrations()
+    end
+
+    if should_update_hashes(conf_new, conf_old) then
+        changing_applied_migrations.update_applied_migrations_hashes()
+        log.info("Update hashes for applied migrations")
     end
 
     return true

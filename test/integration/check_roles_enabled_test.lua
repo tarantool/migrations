@@ -43,6 +43,7 @@ g.before_all(function(cg)
     })
     cg.cluster:start()
 end)
+
 g.after_all(function(cg)
     cg.cluster:stop()
     fio.rmtree(cg.cluster.datadir)

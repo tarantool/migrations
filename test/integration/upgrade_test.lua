@@ -104,4 +104,3 @@ g.test_upgrade_clusterwide_applied_migrations_exist = function(cg)
     t.assert_not(status)
     t.assert_str_contains(tostring(resp), 'A list of applied migrations is found in cluster config')
 end
-
