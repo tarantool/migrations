@@ -11,40 +11,45 @@ local utils = require("test.helper.utils")
 
 local datadir = fio.pathjoin(shared.datadir, 'basic')
 
-g.cluster = cartridge_helpers.Cluster:new({
-    server_command = shared.server_command,
-    datadir = datadir,
-    use_vshard = true,
-    replicasets = {
-        {
-            alias = 'api',
-            uuid = cartridge_helpers.uuid('a'),
-            roles = { 'vshard-router' },
-            servers = { { instance_uuid = cartridge_helpers.uuid('a', 1) } },
-        },
-        {
-            alias = 'storage-1',
-            uuid = cartridge_helpers.uuid('b'),
-            roles = { 'vshard-storage' },
-            servers = {
-                { instance_uuid = cartridge_helpers.uuid('b', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
-                { instance_uuid = cartridge_helpers.uuid('b', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+g.before_all(function()
+    g.cluster = cartridge_helpers.Cluster:new({
+        server_command = shared.server_command,
+        datadir = datadir,
+        use_vshard = true,
+        replicasets = {
+            {
+                alias = 'api',
+                uuid = cartridge_helpers.uuid('a'),
+                roles = { 'vshard-router' },
+                servers = { { instance_uuid = cartridge_helpers.uuid('a', 1) } },
+            },
+            {
+                alias = 'storage-1',
+                uuid = cartridge_helpers.uuid('b'),
+                roles = { 'vshard-storage' },
+                servers = {
+                    { instance_uuid = cartridge_helpers.uuid('b', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                    { instance_uuid = cartridge_helpers.uuid('b', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                },
+            },
+            {
+                alias = 'storage-2',
+                uuid = cartridge_helpers.uuid('c'),
+                roles = { 'vshard-storage' },
+                servers = {
+                    { instance_uuid = cartridge_helpers.uuid('c', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                    { instance_uuid = cartridge_helpers.uuid('c', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
+                },
             },
         },
-        {
-            alias = 'storage-2',
-            uuid = cartridge_helpers.uuid('c'),
-            roles = { 'vshard-storage' },
-            servers = {
-                { instance_uuid = cartridge_helpers.uuid('c', 1), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
-                { instance_uuid = cartridge_helpers.uuid('c', 2), env = {TARANTOOL_HTTP_ENABLED = 'false'} },
-            },
-        },
-    },
-})
+    })
+    g.cluster:start()
+end)
 
-g.before_all(function() g.cluster:start() end)
-g.after_all(function() g.cluster:stop() end)
+g.after_all(function()
+    g.cluster:stop()
+    fio.rmtree(g.cluster.datadir)
+end)
 g.after_each(function() utils.cleanup(g) end)
 
 local cases = {
@@ -79,7 +84,6 @@ local cases = {
 for k, configure_func in pairs(cases) do
     g['test_basic_' .. k] = function()
         configure_func()
-
         for _, server in pairs(g.cluster.servers) do
             t.assert(server.net_box:eval('return box.space.first == nil'), server.alias)
         end
@@ -115,7 +119,8 @@ for k, configure_func in pairs(cases) do
                         engine = "memtx",
                         format = {
                             {is_nullable = false, name = "id", type = "unsigned"},
-                            {is_nullable = false, name = "name", type = "string"}
+                            {is_nullable = false, name = "name", type = "string"},
+                            {is_nullable = true, name = "hash", type = "string"},
                         },
                         indexes = {
                             {
@@ -132,19 +137,19 @@ for k, configure_func in pairs(cases) do
                     first = {
                         engine = "memtx",
                         format = {
-                            { is_nullable = false, name = "key", type = "string" },
-                            { is_nullable = true, name = "value", type = "string" },
+                            {is_nullable = false, name = "key", type = "string"},
+                            {is_nullable = true, name = "value", type = "string"},
                         },
                         indexes = {
                             {
                                 name = "primary",
-                                parts = { { is_nullable = false, path = "key", type = "string" } },
+                                parts = {{is_nullable = false, path = "key", type = "string"}},
                                 type = "TREE",
                                 unique = true,
                             },
                             {
                                 name = "value",
-                                parts = { { is_nullable = true, path = "value", type = "string" } },
+                                parts = {{is_nullable = true, path = "value", type = "string"}},
                                 type = "TREE",
                                 unique = false,
                             },
@@ -155,26 +160,26 @@ for k, configure_func in pairs(cases) do
                     sharded = {
                         engine = "memtx",
                         format = {
-                            { is_nullable = false, name = "key", type = "string" },
-                            { is_nullable = false, name = "bucket_id", type = "unsigned" },
-                            { is_nullable = true, name = "value", type = "any" },
+                            {is_nullable = false, name = "key", type = "string"},
+                            {is_nullable = false, name = "bucket_id", type = "unsigned"},
+                            {is_nullable = true, name = "value", type = "any"},
                         },
                         indexes = {
                             {
                                 name = "primary",
-                                parts = { { is_nullable = false, path = "key", type = "string" } },
+                                parts = {{is_nullable = false, path = "key", type = "string"}},
                                 type = "TREE",
                                 unique = true,
                             },
                             {
                                 name = "bucket_id",
-                                parts = { { is_nullable = false, path = "bucket_id", type = "unsigned" } },
+                                parts = {{is_nullable = false, path = "bucket_id", type = "unsigned"}},
                                 type = "TREE",
                                 unique = false,
                             },
                         },
                         is_local = false,
-                        sharding_key = { "key" },
+                        sharding_key = {"key"},
                         temporary = false,
                     },
                 },
@@ -188,7 +193,7 @@ for k, configure_func in pairs(cases) do
                         step = 1,
                     },
                 },
-            },
+            }
         }
 
         expected_schema = utils.downgrade_ddl_schema_if_required(expected_schema)
@@ -203,7 +208,7 @@ g.test_gh_66_configurable_timeout = function(cg)
     local main = g.cluster.main_server
 
     main:eval([[
-        require('cartridge').config_patch_clusterwide({migrations = {applied = {}, options = {storage_timeout = 0.1}}})
+        require('cartridge').config_patch_clusterwide({['migrations'] = {applied = {}, options = {storage_timeout = 0.1}}})
     ]])
 
     for _, server in pairs(cg.cluster.servers) do

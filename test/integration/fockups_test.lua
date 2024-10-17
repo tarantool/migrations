@@ -11,33 +11,36 @@ local utils = require("test.helper.utils")
 
 local datadir = fio.pathjoin(shared.datadir, 'basic')
 
-g.cluster = cartridge_helpers.Cluster:new({
-    server_command = shared.server_command,
-    datadir = datadir,
-    use_vshard = true,
-    base_advertise_port = 13400,
-    base_http_port = 8090,
-    replicasets = {
-        {
-            alias = 'api',
-            uuid = cartridge_helpers.uuid('a'),
-            roles = { 'vshard-router' },
-            servers = { { instance_uuid = cartridge_helpers.uuid('a', 1) } },
-        },
-        {
-            alias = 'storage-1',
-            uuid = cartridge_helpers.uuid('b'),
-            roles = { 'vshard-storage' },
-            servers = {
-                { instance_uuid = cartridge_helpers.uuid('b', 1), },
-                { instance_uuid = cartridge_helpers.uuid('b', 2), },
+g.before_all(function()
+    g.cluster = cartridge_helpers.Cluster:new({
+        server_command = shared.server_command,
+        datadir = datadir,
+        use_vshard = true,
+        replicasets = {
+            {
+                alias = 'api',
+                uuid = cartridge_helpers.uuid('a'),
+                roles = { 'vshard-router' },
+                servers = { { instance_uuid = cartridge_helpers.uuid('a', 1) } },
+            },
+            {
+                alias = 'storage-1',
+                uuid = cartridge_helpers.uuid('b'),
+                roles = { 'vshard-storage' },
+                servers = {
+                    { instance_uuid = cartridge_helpers.uuid('b', 1), },
+                    { instance_uuid = cartridge_helpers.uuid('b', 2), },
+                },
             },
         },
-    },
-})
+    })
 
-g.before_all(function() g.cluster:start() end)
-g.after_all(function() g.cluster:stop() end)
+    g.cluster:start()
+end)
+g.after_all(function()
+    g.cluster:stop()
+    fio.rmtree(g.cluster.datadir)
+end)
 g.after_each(function() utils.cleanup(g) end)
 
 g.test_drop = function()
@@ -133,10 +136,11 @@ end
 g.test_inconsistent_migrations = function()
     for _, server in pairs(g.cluster.servers) do
         server.net_box:eval([[
-                require('migrator').set_loader({
-                    list = function() return {} end
-                })
-            ]])
+            require('migrator').set_loader({
+                list = function(_) return {} end,
+                hashes_by_name = function(_) return {} end
+            })
+        ]])
     end
     g.cluster.main_server.net_box:eval([[
                 require('migrator').set_loader({
@@ -146,6 +150,11 @@ g.test_inconsistent_migrations = function()
                                 name = '102_local',
                                 up = function() return true end
                             },
+                        }
+                    end,
+                    hashes_by_name = function(_)
+                        return {
+                            ['102_local'] = 'hashXXX',
                         }
                     end
                 })

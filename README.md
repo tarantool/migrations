@@ -160,6 +160,20 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
       storage_timeout: 43200 # in seconds
   ```
 
+* By default, modifying already applied migrations is not permitted.
+    The module will throw an error: "Modifying already applied migrations is not allowed. To enable changes, set the is_applied_migrations_writable option. Keep in mind that already applied migrations will not be reapplied.
+    If you wish to make changes, add new migrations."
+
+    However, if you still need to make changes in applied migrations, you can use the `options.is_applied_migrations_writable`
+    flag by setting it to `true` (by default `false`).
+  ```yaml
+  migrations:
+    options:
+      is_applied_migrations_writable: true
+  ```
+
+* **To "correct" the effects of incorrect migrations, write new ones. Modifying old migrations will not help.**
+
 * To run migrations code on a specific roles use `utils.check_roles_enabled`:
     ```lua
         up = function()

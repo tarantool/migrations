@@ -1,4 +1,5 @@
 local fio = require('fio')
+local digest = require('digest')
 local checks = require('checks')
 local log = require('log')
 
@@ -41,6 +42,31 @@ function Loader:list()
     end
 
     __must_sort(result)
+
+    return result
+end
+
+function Loader:hashes_by_name(cfg)
+    -- cfg might be a new config from validate_config
+    -- if nil uses current active config
+    local ca = require("cartridge.confapplier")
+    cfg = cfg or ca.get_active_config():get_plaintext()
+    if cfg == nil then
+        return {}
+    end
+
+    local result = {}
+
+    for k, text in pairs(cfg) do
+        if k:startswith(self.config_section_name) then
+            local name = k:match("([^/]+)$")
+            if name ~= nil then
+                result[name] = digest.md5(text)
+            else
+                log.warn('Cannot load %s', k)
+            end
+        end
+    end
 
     return result
 end

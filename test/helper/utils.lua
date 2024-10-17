@@ -60,6 +60,7 @@ local function cleanup(g)
                 if box.space._migrations ~= nil and box.space._migrations:truncate() ~= nil then
                     return false
                 end
+
                 return true
             ]]))
         end)
