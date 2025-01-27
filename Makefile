@@ -1,11 +1,11 @@
 version := scm-1
 
-.PHONY: all doc test schema install
+.PHONY: all doc test
+
+SHELL := /bin/bash
 
 AWS_S3_ENDPOINT_URL= https://hb.vkcs.cloud
-DOWNLOAD_PATH = download.tarantool.io/enterprise/release/linux/x86_64/2.11
-TARANTOOL_VERSION = gc64-2.11.3-0-r636.linux.x86_64
-COMMIT_TAG = $(shell git describe)
+TARANTOOL_BUNDLE_PATH := enterprise/release/linux/x86_64/2.11/tarantool-enterprise-sdk-gc64-2.11.5-0-r662.linux.x86_64.tar.gz
 
 all: doc
 	mkdir -p doc
@@ -13,18 +13,22 @@ all: doc
 centos-packages:
 	yum -y install epel-release && yum -y update && yum -y install wget git cmake make unzip
 
-sdk: Makefile
-	curl -O -L https://${DOWNLOAD_TOKEN}@${DOWNLOAD_PATH}/tarantool-enterprise-sdk-${TARANTOOL_VERSION}.tar.gz
-	tar -xzf tarantool-enterprise-sdk-$(TARANTOOL_VERSION).tar.gz
-	rm tarantool-enterprise-sdk-$(TARANTOOL_VERSION).tar.gz
-	mv tarantool-enterprise sdk
+sdk:
+	aws --endpoint-url "$(AWS_S3_ENDPOINT_URL)" s3 cp "s3://packages/$(TARANTOOL_BUNDLE_PATH)" ./sdk.tar.gz
+	mkdir -p sdk && tar -xzvf ./sdk.tar.gz -C sdk --strip 1
+	rm sdk.tar.gz
 
-.rocks: migrations-ee-scm-1.rockspec
-	$(shell) ./deps.sh
+
+.rocks: sdk
+	source sdk/env.sh \
+	&& tt rocks install luatest 1.0.1 --only-server=sdk/rocks \
+	&& tt rocks install luacov 0.13.0 --only-server=sdk/rocks \
+	&& tt rocks install luacheck 0.26.0 --only-server=sdk/rocks \
+	&& tt rocks make
 
 lint:
 	.rocks/bin/luacheck .
 
 test: lint
 	rm -f luacov*
-	.rocks/bin/luatest --verbose
+	source sdk/env.sh && .rocks/bin/luatest --verbose
