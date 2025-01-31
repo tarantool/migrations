@@ -18,6 +18,10 @@ sdk:
 	mkdir -p sdk && tar -xzvf ./sdk.tar.gz -C sdk --strip 1
 	rm sdk.tar.gz
 
+1_2_0_upgrade_rocks:
+	source sdk/env.sh \
+	&& cd test/1_2_0_upgrade/ \
+	&& tt rocks install migrations-ee-1.2.0-1.all.rock
 
 .rocks: sdk
 	source sdk/env.sh \
@@ -29,6 +33,6 @@ sdk:
 lint:
 	.rocks/bin/luacheck .
 
-test: lint
+test: lint 1_2_0_upgrade_rocks
 	rm -f luacov*
 	source sdk/env.sh && .rocks/bin/luatest --verbose

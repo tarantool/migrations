@@ -261,6 +261,44 @@ To perform a downgrade from `1.*` to migrations CE `0.*` version do the followin
 - perform downgrade of the `migrations`.
 
 
+## Upgrade from 1.2.0 to 1.3.0
+
+In **migrations-ee**, there are known issues with upgrading from version **1.2.0** to **1.3.0** (see [TNTP-1188](https://jira.vk.team/browse/TNTP-1188)):
+
+1. A field for hashes may not be created in migrations (during synchronous replication).
+2. `schema.yml` will throw an error during config validation if the field is missing (if `schema.yml` is not empty).
+
+### Workaround for Upgrading:
+
+To address this, perform the following migration while still on **1.2.0**:
+
+```lua
+local function up()
+    box.space._migrations:format({
+        {'id', type='unsigned', is_nullable=false},
+        {'name', type='string', is_nullable=false},
+        {'hash', type='string', is_nullable=true},
+    })
+    return true
+end
+return {
+    up = up,
+}
+```
+
+2. Update the `migrations.yml` configuration on **1.2.0** with the following setting:
+
+```yaml
+options:
+    is_applied_migrations_writable: true
+```
+
+After the upgrade, you can disable this option if needed.
+
+---
+
+In **1.3.1**, the issue with `schema.yml` will not persist (if you use it).
+
 ## Limitations
 - all migrations will be run on all cluster nodes (no partial migrations);
 - no pre-validation for migrations code (yet), so you should test them beforehands;

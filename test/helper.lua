@@ -17,6 +17,7 @@ helper.datadir = fio.pathjoin(tmpdir, 'db_test')
 package.setsearchroot(helper.root)
 
 helper.server_command = fio.pathjoin(helper.root, 'test', 'init.lua')
+helper.server_command_1_2_0 = fio.pathjoin(helper.root, 'test', '1_2_0_upgrade', 'init.lua')
 
 t.before_suite(function()
     fio.rmtree(helper.datadir)
