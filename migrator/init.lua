@@ -104,12 +104,12 @@ local function create_space_for_storing_applied_migrations()
     box.schema.create_space('_migrations', {
         if_not_exists = true,
     })
-
-    box.space._migrations:format({
-        {'id', type='unsigned', is_nullable=false},
-        {'name', type='string', is_nullable=false},
-        {'hash', type='string', is_nullable=true},
-    })
+    if #box.space._migrations:format() == 0 then -- created firstly
+        box.space._migrations:format({
+            {'id', type='unsigned', is_nullable=false},
+            {'name', type='string', is_nullable=false},
+        })
+    end
 
     box.space._migrations:create_index('primary', {
         sequence = '_migrations_id_seq',
@@ -344,6 +344,15 @@ end
 
 local function upgrade()
     check_no_migrations_in_config()
+    if not changing_applied_migrations.is_migration_space_has_hash_field() then
+        -- create field in migrations.up call in order to avoid problems with ddl-manager
+        -- see https://jira.vk.team/browse/TNTP-1188
+        box.space._migrations:format({
+            {'id', type='unsigned', is_nullable=false},
+            {'name', type='string', is_nullable=false},
+            {'hash', type='string', is_nullable=true},
+        })
+    end
     changing_applied_migrations.check_applied_migrations_not_changed()
 
     local migrations = {applied_now = {}, applied = get_applied_local()}
@@ -374,7 +383,23 @@ local function set_use_cartridge_ddl(use_cartridge_ddl)
     vars.use_cartridge_ddl = use_cartridge_ddl
 end
 
-local function validate_config(conf_new)
+local is_should_update_hashes = false
+
+local function should_update_hashes(conf_new, conf_old)
+    -- if is_applied_migrations_writable changes from true to false we should update_applied_migrations_hashes
+    -- it will allow to pass check_applied_migrations_not_changed, if user changed them.
+    local new_is_writable = ((conf_new['migrations'] or {}).options or {}).is_applied_migrations_writable
+    local old_is_writable =
+        ((conf_old['migrations'] or {}).options or {}).is_applied_migrations_writable or
+        changing_applied_migrations.DEFAULT_IS_APPLIED_MIGRATIONS_WRITABLE
+
+    if new_is_writable == false and old_is_writable == true then
+        return true
+    end
+    return false
+end
+
+local function validate_config(conf_new, conf_old)
     local migrations_conf = conf_new['migrations'] or {}
     local options = migrations_conf['options'] or {}
 
@@ -398,33 +423,21 @@ local function validate_config(conf_new)
     if type(box.cfg) == 'table' then
         changing_applied_migrations.check_applied_migrations_not_changed(conf_new)
     end
+    is_should_update_hashes = should_update_hashes(conf_new, conf_old)
     return true
 end
 
-local function should_update_hashes(conf_new, conf_old)
-    -- if is_applied_migrations_writable changes from true to false we should update_applied_migrations_hashes
-    -- it will allow to pass check_applied_migrations_not_changed, if user changed them.
-    local new_is_writable = ((conf_new['migrations'] or {}).options or {}).is_applied_migrations_writable
-    local old_is_writable =
-        ((conf_old['migrations'] or {}).options or {}).is_applied_migrations_writable or
-        changing_applied_migrations.DEFAULT_IS_APPLIED_MIGRATIONS_WRITABLE
 
-    if new_is_writable == false and old_is_writable == true then
-        return true
-    end
-    return false
-end
 
-local function apply_config(conf_new, conf_old)
-    if not box.info().ro then
+local function apply_config(_, opts)
+    if opts.is_master then
         create_space_for_storing_applied_migrations()
+        if is_should_update_hashes then
+            changing_applied_migrations.update_applied_migrations_hashes()
+            log.info("Update hashes for applied migrations")
+            is_should_update_hashes = false
+        end
     end
-
-    if should_update_hashes(conf_new, conf_old) then
-        changing_applied_migrations.update_applied_migrations_hashes()
-        log.info("Update hashes for applied migrations")
-    end
-
     return true
 end
 

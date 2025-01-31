@@ -70,6 +70,7 @@ return {
 
     require('fiber').sleep(0.5)
 
+
     local result = g.cluster.main_server:http_request('post', '/migrations/up', { json = {} })
     t.assert_equals(result.json, {
         applied = {
@@ -79,6 +80,7 @@ return {
         }
     })
     local cfg = g.cluster:download_config()
+
     cfg.migrations = nil
     g.cluster:upload_config(cfg)
 end)
@@ -102,7 +104,6 @@ local function make_applied_migrations_unwritable()
 end
 
 g.after_each(function()
-    -- make_applied_migrations_writable()
     utils.cleanup(g)
     make_applied_migrations_unwritable()
 end)
@@ -148,7 +149,7 @@ g.test_error_migrations_up = function(cg)
     -- update hash manually in order to simulate changes
     for _, s_name in pairs({'api-1', 'storage-1-1', 'storage-2-1'}) do
         cg.cluster:server(s_name):exec(function()
-            box.space._migrations:update(1, {{'=', 'hash', 'changed'}})
+            box.space._migrations:update(1, {{'=', 3, 'changed'}})
         end)
     end
 
@@ -156,4 +157,28 @@ g.test_error_migrations_up = function(cg)
     local status, resp = cg.cluster.main_server:exec(function() return pcall(function() require('migrator').up() end) end)
     t.assert_equals(status, false)
     t.assert_str_contains(resp, "Modifying already applied migrations is not allowed.")
+end
+
+g.test_on_off_check = function(cg)
+    -- test that if we off check, modify migrations, and the on it all will be ok
+    make_applied_migrations_writable()
+    utils.set_sections(cg, { { filename = "migrations/source/01_test.lua", content = [[
+        return {
+            // some changes
+            up = function()
+                return true
+            end
+        }
+    ]]
+    }})
+    make_applied_migrations_unwritable()
+    utils.set_sections(cg, { { filename = "migrations/source/02_test.lua", content = [[
+        return {
+            up = function()
+                require('log').info("NEW MIGRATION")
+                return true
+            end
+        }
+    ]]
+    }})
 end
