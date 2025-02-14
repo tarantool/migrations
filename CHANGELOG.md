@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
-### Fixed
+## [1.3.1]
 - Fixed a bug where the 'hash' field was not created during the update from version 1.2.0 [(#16)](https://github.com/tarantool/migrations-ee/pull/16/)
 
 ## [1.3.0]
