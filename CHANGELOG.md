@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## [1.3.2]
+
 ### Fixed
 
 - Bug in validate_config when space "_migrations" is not created yet.
