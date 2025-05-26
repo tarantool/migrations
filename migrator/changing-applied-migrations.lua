@@ -44,6 +44,10 @@ local function check_migrations(current_hashes_by_name)
 end
 
 function M.is_migration_space_has_hash_field()
+    if box.space._migrations == nil then
+        return false
+    end
+
     return #box.space._migrations:format() > 2
 end
 
