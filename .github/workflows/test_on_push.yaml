@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   all:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     container:
       image: centos:7
     timeout-minutes: 10
