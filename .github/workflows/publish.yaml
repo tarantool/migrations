@@ -20,7 +20,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tarantool/rocks.tarantool.org/github-action@master
         with:
           auth: ${{ secrets.ROCKS_AUTH }}
@@ -31,9 +31,9 @@ jobs:
     needs: version-check
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: tarantool/setup-tarantool@v2
+      - uses: tarantool/setup-tarantool@v3
         with:
           tarantool-version: '2.10'
       - run: echo $PWD/.rocks/bin >> $GITHUB_PATH
