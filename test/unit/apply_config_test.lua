@@ -22,4 +22,5 @@ g.test_apply_config_order = function()
     t.assert(pcall(migrator.init))
     t.assert(pcall(migrator.validate_config,{}, {}))
     t.assert(pcall(migrator.apply_config,{is_master = true}, {}))
+    package.setsearchroot(box.NULL)
 end
