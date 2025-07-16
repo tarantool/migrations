@@ -1,3 +1,6 @@
+-- These tests were ported from migrations-ee.
+-- Version numbers correspond to migrations-ee releases.
+
 local t = require('luatest')
 local changing_applied_migrations = require('migrator.changing-applied-migrations')
 local vars = require('cartridge.vars').new('migrator')
