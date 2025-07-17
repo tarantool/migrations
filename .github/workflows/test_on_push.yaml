@@ -19,6 +19,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
+      - name: Install tarantool
+        uses: tarantool/setup-tarantool@v3
+        with:
+          tarantool-version: '2.11'
+
       - name: Install sdk
         run: make sdk
 
