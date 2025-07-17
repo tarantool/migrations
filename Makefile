@@ -2,16 +2,16 @@ version := scm-1
 
 .PHONY: all doc test schema install
 
-BUNDLE_VERSION=2.8.4-0-g47e6bd362-r508
+ARCHIVE_NAME=tarantool-enterprise-sdk-gc64-2.11.7-0-r691.linux.x86_64.tar.gz
 COMMIT_TAG = $(shell git describe)
 
 all: doc
 	mkdir -p doc
 
 sdk: Makefile
-	wget https://tarantool:$(DOWNLOAD_TOKEN)@download.tarantool.io/enterprise/tarantool-enterprise-bundle-$(BUNDLE_VERSION).tar.gz
-	tar -xzf tarantool-enterprise-bundle-$(BUNDLE_VERSION).tar.gz
-	rm tarantool-enterprise-bundle-$(BUNDLE_VERSION).tar.gz
+	wget https://tarantool:$(DOWNLOAD_TOKEN)@download.tarantool.io/enterprise/release/linux/x86_64/2.11/${ARCHIVE_NAME}
+	tar -xzf ${ARCHIVE_NAME}
+	rm ${ARCHIVE_NAME}
 	mv tarantool-enterprise sdk
 
 .rocks: migrations-scm-1.rockspec
