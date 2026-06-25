@@ -59,6 +59,10 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
     }
     ```
 
+> [!IMPORTANT]
+> If you create a space that is sharded across the cluster, it is *necessary* to register sharding key for this
+> space using `register_sharding_key()` function.
+
 4) Call `curl -X POST http://<your_tarantool_ip>:<http_port>/migrations/up` once you are ready to migrate or connect to any instance of cluster and call `require('migrator').up()`.
 
 5) What will happen then:
@@ -71,7 +75,8 @@ Every migration (e. g. `0001_create_my_sharded_space_DATETIME.lua`) should expos
 
 ## Advanced usage
 
-IMPORTANT: code snippets below should be embedded to `init.lua`, so they would take effect on all nodes of the cluster.
+> [!IMPORTANT]
+> Code snippets below should be embedded to `init.lua`, so they would take effect on all nodes of the cluster.
 
 1) Change directory where migrations are located: embed the following to init.lua
 
@@ -146,8 +151,10 @@ IMPORTANT: code snippets below should be embedded to `init.lua`, so they would t
           return true
       end
   ```
-  Warning! It's not correct to specify 'bucket_id' as a 'key' parameter for register_sharding_key().
-  The 'bucket_id' field is a place where the output of sharding function is saved to.
+
+> [!WARNING]
+> It's not correct to specify 'bucket_id' as a 'key' parameter for register_sharding_key().
+> The 'bucket_id' field is a place where the output of sharding function is saved to.
 
 * Before 0.6.0, each storage migration run time was limited to 3600 seconds (#66).
   If your migrations run longer than this limit, it will result in timeout error.

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Add `drop_sharding_key()` helper to clean `_ddl_sharding_key` up after
+  dropping a space.
+- Add `(register|drop)_sharding_func()` helpers (gh-59).
+- Update README to highlight that calling `register_sharding_key()` is necessary
+  when creating a sharded space (gh-30).
+
 ## [1.1.0] - 2025-07-17
 
 ### Added
