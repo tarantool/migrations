@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-02
+
 ### Added
 
 - Add `drop_sharding_key()` helper to clean `_ddl_sharding_key` up after
