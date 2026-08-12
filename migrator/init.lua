@@ -136,10 +136,32 @@ end
 local function up()
     check_no_migrations_in_config()
 
+    local candidates = rpc.get_candidates('migrator', { leader_only = true })
+
+    -- Make sure every replicaset has a healthy leader candidate before migrating.
+    -- If a replicaset has no active leader yet (e.g. a freshly added replicaset
+    -- while stateful failover has not elected a leader) or its leader is not healthy,
+    -- fail so the caller can wait for the leader and retry.
+    local topology_cfg = confapplier.get_readonly('topology')
+    local replicasets = (topology_cfg or {}).replicasets or {}
+    local n_replicasets = 0
+    for _ in pairs(replicasets) do
+        n_replicasets = n_replicasets + 1
+    end
+    if n_replicasets > 0 and #candidates < n_replicasets then
+        local err_msg = string.format(
+            'Cannot apply migrations: only %d of %d replicasets have a healthy ' ..
+            'leader candidate. Some replicaset has no active leader yet or its leader is down. ' ..
+            'Wait for the leader to be elected/healthy and retry.',
+            #candidates, n_replicasets)
+        log.error(err_msg)
+        error(err_msg)
+    end
+
     local result = {}
     local all_migrations = {}
     local fibers = {}
-    for _, instance_uri in pairs(rpc.get_candidates('migrator', { leader_only = true })) do
+    for _, instance_uri in pairs(candidates) do
         log.info('Preparing to run migrations on %s', instance_uri)
         local f = fiber.new(function()
             local conn = pool.connect(instance_uri)
