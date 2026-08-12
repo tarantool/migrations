@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-12
+
+### Fixed
+
+- When a replicaset has no healthy leader candidate (its leader
+  is disabled / down / not yet elected during stateful failover), migrator.up()
+  used to silently skip it and report success. Make sure every replicaset has
+  a healthy leader candidate before migrating. If a replicaset has no active
+  leader yet or its leader is not healthy, fail so the caller can wait
+  for the leader and retry.
+
 ## [1.2.0] - 2026-07-02
 
 ### Added
